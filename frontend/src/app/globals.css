@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Light theme (default) */
+  :root {
+    --background: #ffffff;
+    --background-secondary: #f4f4f5;
+    --foreground: #18181b;
+    --foreground-muted: #71717a;
+    --primary: #6366f1;
+    --primary-hover: #818cf8;
+    --accent: #22d3ee;
+    --accent-hover: #67e8f9;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --destructive: #ef4444;
+    --border: #e4e4e7;
+    --border-hover: #d4d4d8;
+    --card: #fafafa;
+    --card-hover: #f4f4f5;
+    --input: #ffffff;
+    --input-border: #e4e4e7;
+    --skeleton: #e4e4e7;
+    --skeleton-shine: #d4d4d8;
+  }
+
+  /* Dark theme */
+  .dark {
+    --background: #000000;
+    --background-secondary: #0a0a0a;
+    --foreground: #fafafa;
+    --foreground-muted: #a1a1aa;
+    --primary: #6366f1;
+    --primary-hover: #818cf8;
+    --accent: #22d3ee;
+    --accent-hover: #67e8f9;
+    --success: #22c55e;
+    --warning: #f59e0b;
+    --destructive: #ef4444;
+    --border: #27272a;
+    --border-hover: #3f3f46;
+    --card: #0a0a0a;
+    --card-hover: #141414;
+    --input: #141414;
+    --input-border: #27272a;
+    --skeleton: #1a1a1a;
+    --skeleton-shine: #2a2a2a;
+  }
+
+  html {
+    @apply antialiased;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    min-height: 100vh;
+  }
+
+  /* Focus visible for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-offset-2;
+    --tw-ring-color: var(--primary);
+    --tw-ring-offset-color: var(--background);
+  }
+
+  /* Respect reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

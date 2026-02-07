@@ -1,0 +1,53 @@
+# Python - do not add cache, builds, or pycache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+*.egg
+build/
+dist/
+*.egg-info
+*.egg
+venv/
+.venv/
+env/
+.env
+.env.local
+
+# Cache (Python & general)
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.cache
+.cache/
+
+# Django
+*.log
+db.sqlite3
+/media
+/static
+
+# Node / Next.js (frontend) - do not add node_modules, builds, or cache
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.turbo
+frontend/.cache/
+frontend/npm-debug.log*
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Testing
+.coverage
+htmlcov/
