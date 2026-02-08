@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import * as Select from '@radix-ui/react-select';
 import { ChevronDown, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,7 @@ export function RelationField({
   error,
 }: RelationFieldProps) {
   const relation = field.relation;
-  const [options, setOptions] = useState<Array<{ id: number; text: string }>>([]);
+  const [options, setOptions] = useState<Array<{ id: number | string; text: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
@@ -33,11 +33,21 @@ export function RelationField({
       if (!relation) return;
       setLoading(true);
       try {
-        const res = await api.autocomplete(
-          relation.app_label,
-          relation.model_name,
-          q || undefined
-        );
+        let res: { results?: Array<{ id: number; text: string }> };
+        try {
+          res = await api.autocomplete(
+            relation.app_label,
+            relation.model_name,
+            q || undefined
+          );
+        } catch {
+          res = await api.relationOptions(
+            relation.app_label,
+            relation.model_name,
+            q || undefined,
+            50
+          );
+        }
         setOptions(res.results ?? []);
       } catch {
         setOptions([]);
@@ -53,8 +63,19 @@ export function RelationField({
     fetchOptions(search);
   }, [relation, search, fetchOptions]);
 
-  const valueNum = value === null || value === undefined ? null : Number(value);
-  const selected = options.find((o) => o.id === valueNum);
+  const rawId = value === null || value === undefined || value === ''
+    ? undefined
+    : typeof value === 'object' && value !== null && 'id' in value
+      ? (value as { id: unknown }).id
+      : value;
+  const valueStr = rawId === undefined || rawId === null ? undefined : String(rawId);
+  // Ensure current value has a matching Select.Item so Radix shows it (options can be empty after close/refetch)
+  const optionsWithSelected = useMemo(() => {
+    if (!valueStr) return options;
+    if (options.some((o) => String(o.id) === valueStr)) return options;
+    return [{ id: valueStr, text: `#${valueStr}` }, ...options];
+  }, [options, valueStr]);
+  const selected = optionsWithSelected.find((o) => String(o.id) === valueStr);
 
   return (
     <div className="space-y-1.5">
@@ -68,13 +89,16 @@ export function RelationField({
         )}
       </label>
       <Select.Root
-        value={valueNum != null ? String(valueNum) : undefined}
+        value={valueStr ?? '__null__'}
         onValueChange={(v) => {
-          if (v === '' || v === '__null__') onChange?.(null);
-          else {
-            const n = Number(v);
-            onChange?.(Number.isNaN(n) ? null : n);
+          // Only treat __null__ as "clear"; ignore '' from Radix (it can fire when value briefly doesn't match an item)
+          if (v === '__null__') {
+            onChange?.(null);
+            return;
           }
+          if (v === '') return;
+          const num = Number(v);
+          onChange?.(Number.isNaN(num) ? v : num);
         }}
         onOpenChange={(o) => {
           setOpen(o);
@@ -91,7 +115,7 @@ export function RelationField({
           )}
         >
           <Select.Value placeholder={loading ? 'Loading...' : 'Select...'}>
-            {selected ? selected.text : valueNum != null ? `#${valueNum}` : null}
+            {selected ? selected.text : valueStr != null ? `#${valueStr}` : null}
           </Select.Value>
           <Select.Icon>
             {loading ? (
@@ -116,18 +140,17 @@ export function RelationField({
                 className="w-full rounded border border-input-border bg-input px-2 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
-            {field.nullable && (
-              <Select.Item
-                value="__null__"
-                className="relative flex cursor-pointer select-none items-center rounded px-3 py-2 pl-8 text-sm text-foreground outline-none data-[highlighted]:bg-card-hover"
-              >
-                <Select.ItemIndicator className="absolute left-2 flex w-4 items-center justify-center">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                </Select.ItemIndicator>
-                (empty)
-              </Select.Item>
-            )}
-            {options.map((opt) => (
+            {/* Always render __null__ so Radix has a matching value when empty (avoids blank trigger) */}
+            <Select.Item
+              value="__null__"
+              className="relative flex cursor-pointer select-none items-center rounded px-3 py-2 pl-8 text-sm text-foreground outline-none data-[highlighted]:bg-card-hover"
+            >
+              <Select.ItemIndicator className="absolute left-2 flex w-4 items-center justify-center">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              </Select.ItemIndicator>
+              {field.nullable ? '(empty)' : 'Select...'}
+            </Select.Item>
+            {optionsWithSelected.map((opt) => (
               <Select.Item
                 key={opt.id}
                 value={String(opt.id)}

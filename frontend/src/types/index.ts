@@ -194,6 +194,38 @@ export interface ActionSchema {
   description: string;
 }
 
+/**
+ * Object tool (action button on detail page).
+ * Defined via `djnext_object_tools` on the ModelAdmin.
+ */
+export interface ObjectToolSchema {
+  /** Tool method name (used for API endpoint) */
+  name: string;
+  /** Button label (from short_description or titleized name) */
+  label: string;
+  /** Optional Lucide icon name (e.g., 'ExternalLink', 'Copy', 'Mail') */
+  icon?: string;
+  /** Button variant: 'primary', 'secondary', 'danger', 'ghost' */
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  /** Optional confirmation message (shows confirm dialog before executing) */
+  confirm?: string;
+}
+
+/**
+ * Custom view (get_urls equivalent).
+ * Defined via `djnext_custom_views` on the ModelAdmin.
+ */
+export interface CustomViewSchema {
+  /** View method name (used for API endpoint) */
+  name: string;
+  /** Description for documentation */
+  description: string;
+  /** True for detail-level (requires pk), False for list-level */
+  detail: boolean;
+  /** Allowed HTTP methods */
+  methods: string[];
+}
+
 export interface ModelInfo {
   name: string;
   app_label: string;
@@ -204,15 +236,54 @@ export interface ModelInfo {
   pk_field: string;
 }
 
+/**
+ * Column metadata for list_display.
+ * Backend can return either string[] (just names) or ListDisplayColumn[] (with metadata).
+ */
+export interface ListDisplayColumn {
+  name: string;
+  label: string;
+  /** Whether this column can contain HTML (from format_html/mark_safe) */
+  is_html?: boolean;
+  /** Whether this is a computed/method field */
+  is_method?: boolean;
+  /** Whether column is sortable */
+  sortable?: boolean;
+  /** Field to use for ordering if different from name */
+  order_field?: string;
+}
+
 export interface ModelSchema {
   model: ModelInfo;
   fields: FieldSchema[];
   fieldsets: FieldsetSchema[] | null;
-  list_display: string[];
+  /** Can be string[] (old format) or ListDisplayColumn[] (new format with metadata) */
+  list_display: (string | ListDisplayColumn)[];
+  /**
+   * Fields that are clickable links to detail page.
+   * - null/undefined: first column is clickable (default Django behavior)
+   * - []: no columns are clickable
+   * - ['field1', 'field2']: specific fields are clickable
+   */
+  list_display_links?: string[] | null;
+  /**
+   * Fields that can be edited inline in the list view.
+   * Note: fields in list_editable cannot also be in list_display_links.
+   */
+  list_editable?: string[];
+  /**
+   * Date field for date-based drill-down navigation (year → month → day).
+   */
+  date_hierarchy?: string | null;
   list_filter: string[];
   search_fields: string[];
   ordering: string[];
+  /** Bulk actions (list page checkboxes) */
   actions: ActionSchema[];
+  /** Object tools (detail page action buttons) */
+  object_tools?: ObjectToolSchema[];
+  /** Custom views/API endpoints (get_urls equivalent) */
+  custom_views?: CustomViewSchema[];
   inlines: InlineSchema[];
   permissions: ModelPermissions;
   endpoints: ModelEndpoints;

@@ -55,6 +55,63 @@ class DJNextModelAdmin(DJNextAdminMixin, admin.ModelAdmin):
       - djnext_media: Dict like Django's ModelAdmin.Media for custom CSS/JS
         on this model's pages: {'css': ['url1', 'url2'], 'js': ['url1']}.
         URLs are loaded when the user is on list/detail/create for this model.
+
+      - djnext_object_tools: List of method names that appear as action buttons
+        on the detail page. Each method receives (self, request, obj) and can
+        return a dict or Response. Method attributes:
+          - short_description: Button label
+          - icon: Lucide icon name (e.g., 'ExternalLink', 'Copy')
+          - variant: 'primary', 'secondary', 'danger', 'ghost'
+          - confirm: Confirmation message before executing
+
+        Example:
+            djnext_object_tools = ['clone_object', 'send_notification']
+
+            def clone_object(self, request, obj):
+                new_obj = obj.clone()
+                return {'message': f'Cloned as #{new_obj.pk}', 'success': True}
+            clone_object.short_description = 'Clone'
+            clone_object.icon = 'Copy'
+            clone_object.confirm = 'Are you sure you want to clone this item?'
+
+      - djnext_custom_views: List of method names that become custom API endpoints.
+        Each method receives (self, request) for list-level views or
+        (self, request, pk) for detail-level views. Set `.detail = True` on the
+        method for detail-level. Returns dict or Response.
+
+        Endpoints are accessible at:
+          - List-level: /api/admin/{app}/{model}/views/{view_name}/
+          - Detail-level: /api/admin/{app}/{model}/{pk}/views/{view_name}/
+
+        Method attributes:
+          - detail: True for detail-level (requires pk), False for list-level
+          - methods: HTTP methods allowed, default ['GET']
+          - short_description: Description for documentation
+
+        Example:
+            djnext_custom_views = ['export_csv', 'statistics', 'preview']
+
+            def export_csv(self, request):
+                # Generate CSV export
+                qs = self.model.objects.all()
+                return {'url': generate_csv_url(qs)}
+            export_csv.methods = ['GET']
+            export_csv.short_description = 'Export as CSV'
+
+            def statistics(self, request):
+                # Return aggregate statistics
+                return {
+                    'total': self.model.objects.count(),
+                    'active': self.model.objects.filter(is_active=True).count(),
+                }
+            statistics.methods = ['GET']
+
+            def preview(self, request, pk):
+                # Preview a single object
+                obj = self.model.objects.get(pk=pk)
+                return {'preview_html': obj.render_preview()}
+            preview.detail = True
+            preview.methods = ['GET']
     """
     pass
 

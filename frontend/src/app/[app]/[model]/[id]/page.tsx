@@ -11,6 +11,7 @@ import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ModelMediaInjector } from '@/components/layout/CustomMediaInjector';
 import { DynamicForm } from '@/components/form/DynamicForm';
 import { InlineTable } from '@/components/detail/InlineTable';
+import { ObjectTools } from '@/components/detail/ObjectTools';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -175,10 +176,12 @@ export default function ModelDetailPage({
   }
 
   const listPath = `/${params.app}/${params.model}`;
-  const displayFields = schema.list_display?.length
-    ? schema.list_display
+  // Normalize list_display to string[] (can be string or ListDisplayColumn)
+  const displayFields: string[] = schema.list_display?.length
+    ? schema.list_display.map((col) => (typeof col === 'string' ? col : col.name))
     : schema.fields?.map((f) => f.name).filter(Boolean) ?? [];
   const canEdit = schema.permissions?.change && data;
+  const objectTools = schema.object_tools ?? [];
 
   const handleSubmit = async (payload: Record<string, unknown>) => {
     await update(payload);
@@ -208,15 +211,27 @@ export default function ModelDetailPage({
               </p>
             </div>
           </div>
-          {canEdit && mode === 'view' && (
-            <Button
-              variant="secondary"
-              leftIcon={<Pencil className="h-4 w-4" />}
-              onClick={() => setMode('edit')}
-            >
-              Edit
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Object Tools - action buttons on detail page */}
+            {mode === 'view' && objectTools.length > 0 && (
+              <ObjectTools
+                tools={objectTools}
+                objectId={params.id}
+                appLabel={params.app}
+                modelName={params.model}
+                onRefresh={refetch}
+              />
+            )}
+            {canEdit && mode === 'view' && (
+              <Button
+                variant="secondary"
+                leftIcon={<Pencil className="h-4 w-4" />}
+                onClick={() => setMode('edit')}
+              >
+                Edit
+              </Button>
+            )}
+          </div>
         </div>
 
         {mode === 'edit' && canEdit ? (

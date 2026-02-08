@@ -13,14 +13,14 @@
 | Feature | Django Admin | DJNext | Notes |
 |---------|-------------|--------|-------|
 | `list_display` | ✅ | ✅ | Fields shown in table |
-| `list_display_links` | ✅ | 🔶 | First column clickable |
+| `list_display_links` | ✅ | ✅ | Configurable clickable columns |
 | `list_filter` | ✅ | ✅ | Sidebar filters |
-| `list_editable` | ✅ | ❌ | Inline editing in list |
+| `list_editable` | ✅ | ✅ | Inline editing in list |
 | `list_per_page` | ✅ | ✅ | Pagination |
 | `list_max_show_all` | ✅ | ❌ | Show all button |
 | `search_fields` | ✅ | ✅ | Search box |
 | `ordering` | ✅ | ✅ | Default sort |
-| `date_hierarchy` | ✅ | ❌ | Date-based drill-down |
+| `date_hierarchy` | ✅ | ✅ | Date-based drill-down |
 | `show_full_result_count` | ✅ | ✅ | Total count |
 | `sortable_by` | ✅ | ✅ | Sortable columns |
 | `empty_value_display` | ✅ | 🔶 | Shows "-" |
@@ -44,11 +44,11 @@
 |---------|-------------|--------|-------|
 | Custom methods in list_display | ✅ | ✅ | Callable fields |
 | `@admin.display` decorator | ✅ | 🔶 | Via introspection |
-| `format_html` / `mark_safe` | ✅ | ❌ | **NEEDED** |
+| `format_html` / `mark_safe` | ✅ | ✅ | HTML in list columns |
 | Boolean icons | ✅ | ✅ | Auto-detected |
 | `short_description` | ✅ | ✅ | Column headers |
 | `admin_order_field` | ✅ | 🔶 | Ordering hints |
-| Custom links/URLs | ✅ | ❌ | **NEEDED** |
+| Custom links/URLs | ✅ | ✅ | Via `format_html` + `list_display_links` |
 
 ## 4. Detail/Edit View
 
@@ -111,11 +111,11 @@
 
 | Feature | Django Admin | DJNext | Notes |
 |---------|-------------|--------|-------|
-| `get_urls()` | ✅ | ❌ | **NEEDED** |
-| Custom admin views | ✅ | ❌ | **NEEDED** |
+| `get_urls()` | ✅ | ✅ | Via `djnext_custom_views` |
+| Custom admin views | ✅ | ✅ | Via `djnext_custom_views` |
 | Change view customization | ✅ | ❌ | Custom detail page |
 | History view | ✅ | ❌ | Audit log |
-| Object tools | ✅ | ❌ | **NEEDED** - action buttons |
+| Object tools | ✅ | ✅ | Via `djnext_object_tools` |
 
 ## 9. Site Customization
 
@@ -145,14 +145,14 @@
 ## Missing Features (Priority)
 
 ### High Priority 🔴
-1. **`format_html` / `mark_safe`** - Render HTML in list/detail views
-2. **Custom URLs/Views** - `get_urls()` equivalent
-3. **Object Tools** - Action buttons on detail page
-4. **Custom Links** - Links in list columns
+1. ~~**`format_html` / `mark_safe`**~~ ✅ - Render HTML in list/detail views
+2. ~~**Custom URLs/Views**~~ ✅ - `get_urls()` equivalent (via `djnext_custom_views`)
+3. ~~**Object Tools**~~ ✅ - Action buttons on detail page (via `djnext_object_tools`)
+4. ~~**Custom Links**~~ ✅ - Via `list_display_links` + `format_html` for custom URLs
 
 ### Medium Priority 🟡
-5. **`list_editable`** - Inline editing in list view
-6. **`date_hierarchy`** - Date-based navigation
+5. ~~**`list_editable`**~~ ✅ - Inline editing in list view
+6. ~~**`date_hierarchy`**~~ ✅ - Date-based navigation
 7. **`prepopulated_fields`** - Auto-fill from other fields
 8. **History/Audit log** - Change tracking
 9. **`filter_horizontal/vertical`** - Better M2M widget
@@ -310,13 +310,13 @@ th {
 ## Implementation Roadmap
 
 ### Phase 1: HTML & Custom Content
-- [ ] Support `format_html` / `mark_safe` in list columns
+- [x] Support `format_html` / `mark_safe` in list columns
 - [ ] Support custom HTML in readonly fields
 - [ ] Custom cell renderers for specific field types
 
 ### Phase 2: Custom URLs & Actions
-- [ ] `get_urls()` equivalent for custom endpoints
-- [ ] Object tools (buttons on detail page)
+- [x] `get_urls()` equivalent for custom endpoints - via `djnext_custom_views`
+- [x] Object tools (buttons on detail page) - via `djnext_object_tools`
 - [ ] Custom action intermediate pages
 
 ### Phase 3: Advanced Widgets
@@ -326,5 +326,158 @@ th {
 
 ### Phase 4: Extended Features
 - [ ] History/audit log view
-- [ ] `date_hierarchy`
-- [ ] `list_editable`
+- [x] `date_hierarchy` - date-based drill-down navigation
+- [x] `list_editable` - inline editing in list view
+
+---
+
+## Implementation Details
+
+### format_html / mark_safe Support (Completed)
+
+**Backend Changes** (`djnext_admin/`):
+- `serializers/fields.py`: Added `is_html_safe()` and `wrap_html_value()` utilities
+- `serializers/factory.py`: Added `_get_method_fields()` to handle callable list_display methods
+- `core/introspection.py`: Updated `_get_list_display()` to return metadata (is_html, is_method, sortable)
+
+**Frontend Changes** (`djnext_admin/frontend/src/`):
+- `types/index.ts`: Added `ListDisplayColumn` interface with `is_html` metadata
+- `components/list/DataTable.tsx`: Updated `Cell` component to render HTML values safely
+
+**How it works**:
+1. Backend detects `SafeString` values (from `format_html`/`mark_safe`)
+2. Wraps them as `{_html: true, content: "<html>..."}`
+3. Frontend renders with `dangerouslySetInnerHTML`
+
+**Usage Example**:
+```python
+from django.utils.html import format_html
+from djnext_admin import DJNextModelAdmin
+
+class ProductAdmin(DJNextModelAdmin):
+    list_display = ['name', 'status_badge', 'price']
+
+    def status_badge(self, obj):
+        color = {'active': 'green', 'inactive': 'red'}.get(obj.status, 'gray')
+        return format_html(
+            '<span style="background:{}; color:white; padding:2px 8px; border-radius:4px">{}</span>',
+            color, obj.get_status_display()
+        )
+    status_badge.short_description = 'Status'
+    status_badge.allow_html = True  # Mark for frontend metadata
+```
+
+---
+
+### Object Tools Support (Completed)
+
+**Backend Changes** (`djnext_admin/`):
+- `core/introspection.py`: Added `_get_object_tools()` to return tool metadata
+- `views/factory.py`: Added detail-level action endpoints via `@action(detail=True)`
+- `admin.py`: Documented `djnext_object_tools` attribute
+
+**Frontend Changes** (`djnext_admin/frontend/src/`):
+- `types/index.ts`: Added `ObjectToolSchema` interface
+- `components/detail/ObjectTools.tsx`: New component for rendering tool buttons
+- `app/[app]/[model]/[id]/page.tsx`: Integrated ObjectTools component
+
+**How it works**:
+1. Admin defines `djnext_object_tools = ['method_name1', 'method_name2']`
+2. Each method receives `(self, request, obj)` and returns a dict or Response
+3. Frontend renders buttons and calls `/api/admin/{app}/{model}/{id}/tools/{tool_name}/`
+
+**Usage Example**:
+```python
+from djnext_admin import DJNextModelAdmin
+
+class OrderAdmin(DJNextModelAdmin):
+    list_display = ['id', 'customer', 'total', 'status']
+    djnext_object_tools = ['mark_shipped', 'send_invoice', 'clone_order']
+
+    def mark_shipped(self, request, obj):
+        obj.status = 'shipped'
+        obj.save()
+        return {'success': True, 'message': f'Order #{obj.pk} marked as shipped'}
+    mark_shipped.short_description = 'Mark as Shipped'
+    mark_shipped.icon = 'Truck'
+    mark_shipped.variant = 'primary'
+
+    def send_invoice(self, request, obj):
+        # Send email logic here
+        obj.send_invoice_email()
+        return {'success': True, 'message': 'Invoice sent to customer'}
+    send_invoice.short_description = 'Send Invoice'
+    send_invoice.icon = 'Mail'
+    send_invoice.confirm = 'Send invoice email to customer?'
+
+    def clone_order(self, request, obj):
+        new_order = obj.clone()
+        return {'success': True, 'message': f'Cloned as Order #{new_order.pk}'}
+    clone_order.short_description = 'Clone Order'
+    clone_order.icon = 'Copy'
+    clone_order.variant = 'secondary'
+```
+
+---
+
+### Custom Views Support (Completed)
+
+**Backend Changes** (`djnext_admin/`):
+- `core/introspection.py`: Added `_get_custom_views()` to return view metadata
+- `views/factory.py`: Added `_create_custom_view_endpoint()` for list/detail level views
+- `admin.py`: Documented `djnext_custom_views` attribute
+
+**Frontend Changes** (`djnext_admin/frontend/src/`):
+- `types/index.ts`: Added `CustomViewSchema` interface
+
+**How it works**:
+1. Admin defines `djnext_custom_views = ['view_name1', 'view_name2']`
+2. List-level views receive `(self, request)` and are accessible at `/api/admin/{app}/{model}/views/{view_name}/`
+3. Detail-level views receive `(self, request, pk)` with `.detail = True` at `/api/admin/{app}/{model}/{pk}/views/{view_name}/`
+
+**Usage Example**:
+```python
+from djnext_admin import DJNextModelAdmin
+from rest_framework.response import Response
+
+class ProductAdmin(DJNextModelAdmin):
+    list_display = ['name', 'price', 'stock']
+    djnext_custom_views = ['export_csv', 'statistics', 'preview']
+
+    def export_csv(self, request):
+        """Export all products as CSV."""
+        import csv
+        from django.http import HttpResponse
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="products.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['Name', 'Price', 'Stock'])
+        for product in self.model.objects.all():
+            writer.writerow([product.name, product.price, product.stock])
+        return Response({'url': '/media/exports/products.csv'})
+    export_csv.methods = ['GET']
+    export_csv.short_description = 'Export as CSV'
+
+    def statistics(self, request):
+        """Return aggregate statistics for dashboard."""
+        from django.db.models import Avg, Sum, Count
+        stats = self.model.objects.aggregate(
+            total=Count('id'),
+            avg_price=Avg('price'),
+            total_stock=Sum('stock'),
+        )
+        return stats
+    statistics.methods = ['GET']
+    statistics.short_description = 'Get Statistics'
+
+    def preview(self, request, pk):
+        """Preview a single product (detail-level)."""
+        product = self.model.objects.get(pk=pk)
+        return {
+            'name': product.name,
+            'preview_html': f'<h1>{product.name}</h1><p>${product.price}</p>',
+        }
+    preview.detail = True
+    preview.methods = ['GET']
+    preview.short_description = 'Preview Product'
+```

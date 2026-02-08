@@ -16,6 +16,7 @@ from .views.schema import GlobalSchemaView, ModelSchemaView
 from .views.auth import AuthViewSet
 from .views.search import GlobalSearchView
 from .views.health import HealthView
+from .views.relation_options import RelationOptionsView
 from .views.factory import ViewSetFactory
 from .core.registry import get_registered_models
 from .settings import djnext_settings
@@ -71,6 +72,9 @@ urlpatterns = [
 
     # Global search across models (char fields, record-level)
     path('search/', GlobalSearchView.as_view(), name='global-search'),
+
+    # Generic relation options (for FK/M2M when target model not registered, e.g. auth.Group)
+    path('relation-options/', RelationOptionsView.as_view(), name='relation-options'),
 
     # Authentication endpoints
     path('auth/login/', AuthViewSet.as_view({'post': 'login'}), name='auth-login'),

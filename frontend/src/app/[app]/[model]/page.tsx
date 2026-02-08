@@ -10,6 +10,7 @@ import { useFilterOptions } from '@/hooks/useFilterOptions';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ModelMediaInjector } from '@/components/layout/CustomMediaInjector';
 import { DataTable } from '@/components/list/DataTable';
+import { DateHierarchy } from '@/components/list/DateHierarchy';
 import { SearchBar } from '@/components/list/SearchBar';
 import { FilterSidebar } from '@/components/list/FilterSidebar';
 import { Button } from '@/components/ui/Button';
@@ -43,24 +44,47 @@ export default function ModelListPage({
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; repr: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  // Date hierarchy state
+  const [dateHierarchy, setDateHierarchy] = useState<{
+    year?: number;
+    month?: number;
+    day?: number;
+  }>({});
 
-  // Reset to page 1 when filters or search change so filtered list shows correct first page
+  // Reset to page 1 when filters, search, or date hierarchy change
   useEffect(() => {
     setPage(1);
-  }, [filters, search]);
+  }, [filters, search, dateHierarchy]);
 
   const listParams = useMemo(
-    () => ({
-      page,
-      page_size: 25,
-      search: search.trim() || undefined,
-      ...Object.fromEntries(
-        Object.entries(filters).filter(
-          ([_, v]) => v !== undefined && v !== ''
-        )
-      ),
-    }),
-    [page, search, filters]
+    () => {
+      const params: Record<string, string | number | undefined> = {
+        page,
+        page_size: 25,
+        search: search.trim() || undefined,
+      };
+
+      // Add regular filters (convert booleans to strings)
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') {
+          params[key] = typeof value === 'boolean' ? String(value) : value;
+        }
+      });
+
+      // Add date hierarchy filters (using Django's date field lookups)
+      if (schema?.date_hierarchy && dateHierarchy.year) {
+        params[`${schema.date_hierarchy}__year`] = dateHierarchy.year;
+        if (dateHierarchy.month) {
+          params[`${schema.date_hierarchy}__month`] = dateHierarchy.month;
+          if (dateHierarchy.day) {
+            params[`${schema.date_hierarchy}__day`] = dateHierarchy.day;
+          }
+        }
+      }
+
+      return params;
+    },
+    [page, search, filters, dateHierarchy, schema?.date_hierarchy]
   );
 
   const {
@@ -105,6 +129,15 @@ export default function ModelListPage({
       setActionRunning(false);
     }
   };
+
+  const handleInlineEdit = useCallback(async (id: string, field: string, value: unknown) => {
+    try {
+      await api.bulkUpdate(params.app, params.model, [{ id, [field]: value }]);
+      refetch();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Update failed');
+    }
+  }, [params.app, params.model, refetch]);
 
   const { optionsByField, isLoading: filterOptionsLoading } = useFilterOptions(schema ?? null);
 
@@ -228,6 +261,16 @@ export default function ModelListPage({
         {/* Main: data table + right filter sidebar; table area matches filter height (min = filter height) */}
         <div className="flex items-stretch rounded-lg border border-border bg-card">
           <div className="min-w-0 flex-1 flex flex-col min-h-0">
+            {/* Date hierarchy navigation */}
+            {schema.date_hierarchy && (
+              <DateHierarchy
+                appLabel={params.app}
+                modelName={params.model}
+                dateField={schema.date_hierarchy}
+                values={dateHierarchy}
+                onChange={setDateHierarchy}
+              />
+            )}
             <DataTable
               schema={schema}
               data={results}
@@ -247,6 +290,7 @@ export default function ModelListPage({
                     }
                   : undefined
               }
+              onInlineEdit={schema.list_editable?.length ? handleInlineEdit : undefined}
             />
           </div>
           <FilterSidebar

@@ -5,6 +5,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Pagination } from '@/components/ui/Pagination';
 import { Button } from '@/components/ui/Button';
+import { EditableCell } from './EditableCell';
 import type { ModelSchema } from '@/types';
 
 interface DataTableProps<T = Record<string, unknown>> {
@@ -23,6 +24,37 @@ interface DataTableProps<T = Record<string, unknown>> {
     onToggle: (id: string) => void;
     onToggleAll: (checked: boolean) => void;
   };
+  /** Callback for inline editing (list_editable) */
+  onInlineEdit?: (id: string, field: string, value: unknown) => void;
+}
+
+/** Column metadata from list_display */
+interface ColumnMeta {
+  name: string;
+  label: string;
+  is_html?: boolean;
+  is_method?: boolean;
+  sortable?: boolean;
+}
+
+/** Normalize list_display to always be ColumnMeta[] */
+function normalizeColumns(listDisplay: unknown): ColumnMeta[] {
+  if (!Array.isArray(listDisplay)) return [];
+
+  return listDisplay.map((col) => {
+    // New format: object with metadata
+    if (typeof col === 'object' && col !== null && 'name' in col) {
+      return col as ColumnMeta;
+    }
+    // Old format: just field name string
+    if (typeof col === 'string') {
+      return {
+        name: col,
+        label: col.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+      };
+    }
+    return { name: String(col), label: String(col) };
+  });
 }
 
 export function DataTable<T extends Record<string, unknown>>({
@@ -36,12 +68,54 @@ export function DataTable<T extends Record<string, unknown>>({
   basePath,
   pkField = 'id',
   selection,
+  onInlineEdit,
 }: DataTableProps<T>) {
-  const columns = schema.list_display ?? [];
+  const allColumns = normalizeColumns(schema.list_display);
   const canChange = schema.permissions?.change ?? false;
   const canDelete = schema.permissions?.delete ?? false;
   const showSelection = selection && schema.actions?.length;
   const hasNoRecords = data.length === 0 && totalCount === 0;
+
+  // Filter to columns that exist in API response (so we don't show empty method columns that serializer omits)
+  // First displayed column will be the view link when list_display_links is not set
+  const keysInData = data.length > 0
+    ? new Set(data.flatMap((row) => Object.keys(row as object)))
+    : new Set<string>();
+  const filtered =
+    data.length === 0
+      ? allColumns
+      : allColumns.filter(
+          (col) => keysInData.has(col.name) || col.name === pkField || col.name === 'id'
+        );
+  const columns = filtered.length > 0 ? filtered : allColumns.slice(0, 1);
+
+  // Determine which columns are editable (list_editable)
+  const listEditable = schema.list_editable ?? [];
+  const isColumnEditable = (colName: string): boolean => {
+    return canChange && listEditable.includes(colName) && onInlineEdit !== undefined;
+  };
+
+  // First column always links to view (detail) page; optional extra link columns from list_display_links
+  const listDisplayLinks = schema.list_display_links;
+  const isColumnClickable = (colName: string, colIndex: number): boolean => {
+    if (colIndex === 0) return true;
+    if (Array.isArray(listDisplayLinks) && listDisplayLinks.length > 0) {
+      return listDisplayLinks.includes(colName);
+    }
+    return false;
+  };
+
+  // Don't render first column as editable so it always shows as the view link
+  const shouldRenderEditable = (colName: string, colIndex: number): boolean => {
+    if (!isColumnEditable(colName)) return false;
+    if (colIndex === 0) return false;
+    return true;
+  };
+
+  // Get field schema for a column
+  const getFieldSchema = (colName: string) => {
+    return schema.fields?.find((f) => f.name === colName);
+  };
 
   // Simple empty state: no table, no pagination, just "No records"
   if (hasNoRecords) {
@@ -71,13 +145,13 @@ export function DataTable<T extends Record<string, unknown>>({
                   />
                 </th>
               )}
-              {columns.map((key) => (
+              {columns.map((col) => (
                 <th
-                  key={key}
+                  key={col.name}
                   scope="col"
                   className="px-4 py-3.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground"
                 >
-                  {schema.fields?.find((f) => f.name === key)?.verbose_name ?? key}
+                  {col.label || schema.fields?.find((f) => f.name === col.name)?.verbose_name || col.name}
                 </th>
               ))}
               {(canChange || canDelete) && (
@@ -119,17 +193,39 @@ export function DataTable<T extends Record<string, unknown>>({
                         />
                       </td>
                     )}
-                    {columns.map((key, colIndex) => {
-                      const isFirstColumn = colIndex === 0;
-                      const cellContent = <Cell value={row[key]} columnKey={key} />;
+                    {columns.map((col, colIndex) => {
+                      const shouldLink = isColumnClickable(col.name, colIndex);
+                      const shouldEdit = shouldRenderEditable(col.name, colIndex);
+                      const fieldSchema = getFieldSchema(col.name);
+
+                      // Editable cell (list_editable), unless first column is the default view link
+                      if (shouldEdit) {
+                        return (
+                          <td
+                            key={col.name}
+                            className={cn(
+                              'px-4 py-3 text-sm text-foreground'
+                            )}
+                          >
+                            <EditableCell
+                              value={row[col.name]}
+                              fieldName={col.name}
+                              fieldSchema={fieldSchema}
+                              onSave={(value) => onInlineEdit!(id, col.name, value)}
+                            />
+                          </td>
+                        );
+                      }
+
+                      const cellContent = <Cell value={row[col.name]} columnKey={col.name} />;
                       return (
                         <td
-                          key={key}
+                          key={col.name}
                           className={cn(
                             'px-4 py-3 text-sm text-foreground whitespace-nowrap'
                           )}
                         >
-                          {isFirstColumn ? (
+                          {shouldLink ? (
                             <Link
                               href={`${basePath}/${id}`}
                               className="font-medium text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded cursor-pointer"
@@ -204,10 +300,32 @@ function formatAuditChanges(value: Record<string, unknown>): string {
   return parts.length ? parts.join('; ') : '—';
 }
 
+/** Check if value is HTML-wrapped from backend (format_html/mark_safe) */
+function isHtmlValue(value: unknown): value is { _html: true; content: string } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    '_html' in value &&
+    (value as Record<string, unknown>)._html === true &&
+    'content' in value
+  );
+}
+
 function Cell({ value, columnKey }: { value: unknown; columnKey?: string }) {
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground">—</span>;
   }
+
+  // Handle HTML values from format_html/mark_safe
+  if (isHtmlValue(value)) {
+    return (
+      <span
+        className="html-cell"
+        dangerouslySetInnerHTML={{ __html: value.content }}
+      />
+    );
+  }
+
   if (typeof value === 'boolean') {
     return value ? 'Yes' : 'No';
   }

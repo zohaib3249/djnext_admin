@@ -5,7 +5,7 @@ Creates DRF serializers on-the-fly based on model and admin configuration.
 """
 
 from rest_framework import serializers
-from .fields import RelatedFieldSerializer, FileFieldSerializer, ImageFieldSerializer
+from .fields import RelatedFieldSerializer, FileFieldSerializer, ImageFieldSerializer, wrap_html_value
 
 
 class SerializerFactory:
@@ -73,6 +73,29 @@ class SerializerFactory:
                 }
             serializer_attrs.update(relation_fields)
 
+            # Add method fields (custom admin/model methods in list_display)
+            method_fields = cls._get_method_fields(model, model_admin)
+            for field_name, (source, method) in method_fields.items():
+                extra_fields.append(field_name)
+                serializer_attrs[field_name] = serializers.SerializerMethodField()
+
+                # Create getter function for the method field
+                # We need to capture the method in a closure
+                def make_getter(m, src, admin=model_admin):
+                    def getter(self, obj):
+                        try:
+                            if src == 'admin':
+                                result = m(obj)
+                            else:
+                                result = m(obj)
+                            # Wrap HTML-safe values for frontend
+                            return wrap_html_value(result)
+                        except Exception:
+                            return None
+                    return getter
+
+                serializer_attrs[f'get_{field_name}'] = make_getter(method, source)
+
         # Build Meta class
         if fields != '__all__':
             # Add extra fields to the list
@@ -102,7 +125,7 @@ class SerializerFactory:
 
     @classmethod
     def _get_list_fields(cls, model, model_admin):
-        """Get fields for list view."""
+        """Get fields for list view (model fields only, methods handled separately)."""
         if model_admin:
             list_display = getattr(model_admin, 'list_display', None)
             if list_display:
@@ -115,6 +138,42 @@ class SerializerFactory:
                 return fields
 
         return '__all__'
+
+    @classmethod
+    def _get_method_fields(cls, model, model_admin):
+        """
+        Get method fields from list_display that are not model fields.
+        These are callable methods on the admin or model that compute display values.
+        Returns dict of {field_name: method} for fields that need SerializerMethodField.
+        """
+        method_fields = {}
+
+        if not model_admin:
+            return method_fields
+
+        list_display = getattr(model_admin, 'list_display', None)
+        if not list_display:
+            return method_fields
+
+        valid_model_fields = {f.name for f in model._meta.get_fields()}
+
+        for field_name in list_display:
+            # Skip if it's a model field or special value
+            if field_name in valid_model_fields or field_name in ('__str__', 'pk', 'id'):
+                continue
+
+            # Check if it's a method on admin
+            method = getattr(model_admin, field_name, None)
+            if method and callable(method):
+                method_fields[field_name] = ('admin', method)
+                continue
+
+            # Check if it's a method on model
+            method = getattr(model, field_name, None)
+            if method and callable(method):
+                method_fields[field_name] = ('model', method)
+
+        return method_fields
 
     @classmethod
     def _get_detail_fields(cls, model, model_admin):

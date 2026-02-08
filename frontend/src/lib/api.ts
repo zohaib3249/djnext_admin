@@ -12,6 +12,17 @@ import type {
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 const API_PATH = process.env.NEXT_PUBLIC_API_PATH || '/api/djnext';
 
+/** Thrown on 400 with field-level validation errors; details is { fieldName: string[] } */
+export class ApiValidationError extends Error {
+  details: Record<string, string[]>;
+
+  constructor(message: string, details: Record<string, string[]>) {
+    super(message);
+    this.name = 'ApiValidationError';
+    this.details = details;
+  }
+}
+
 class ApiClient {
   private baseUrl: string;
   private accessToken: string | null = null;
@@ -73,21 +84,30 @@ class ApiClient {
       credentials: 'include',
     });
 
-    const body = await response.json();
+    const body = await response.json().catch(() => ({}));
 
     // Backend may return raw payload or wrapped { data, error }
     const hasWrapper = body && typeof body === 'object' && 'data' in body;
     const hasError = body && typeof body === 'object' && 'error' in body;
 
     if (!response.ok) {
-      const message = hasError && typeof body.error === 'object'
-        ? (body.error as { message?: string }).message
-        : typeof body.error === 'string'
-          ? body.error
-          : 'Request failed';
+      const errObj = hasError && typeof body.error === 'object' ? (body.error as { message?: string; details?: Record<string, string[]> }) : null;
+      const message =
+        (typeof body.message === 'string' && body.message) ||
+        (errObj && typeof errObj.message === 'string' && errObj.message) ||
+        (hasError && typeof body.error === 'string' ? body.error : null) ||
+        'Request failed';
       if (response.status === 401 && this.getRefreshToken()) {
         const refreshed = await this.refreshToken();
         if (refreshed) return this.request<T>(endpoint, options);
+      }
+      // details can be at body.details or body.error.details
+      const details: Record<string, string[]> =
+        (body && typeof body === 'object' && body.details && typeof body.details === 'object' && (body.details as Record<string, string[]>)) ||
+        (errObj && errObj.details && typeof errObj.details === 'object' && errObj.details) ||
+        {};
+      if (response.status === 400 && Object.keys(details).length > 0) {
+        throw new ApiValidationError(message, details);
       }
       throw new Error(message);
     }
@@ -284,6 +304,24 @@ class ApiClient {
     return this.request(`/${appLabel}/${modelName}/autocomplete/${query ? `?${query}` : ''}`);
   }
 
+  /**
+   * Generic relation options for any model (e.g. auth.Group, auth.Permission).
+   * Use when the model may not be registered and autocomplete returns 404.
+   */
+  async relationOptions(
+    appLabel: string,
+    modelName: string,
+    search?: string,
+    pageSize = 50
+  ): Promise<{ results: Array<{ id: number; text: string }>; has_more: boolean }> {
+    const params = new URLSearchParams();
+    params.set('app_label', appLabel);
+    params.set('model_name', modelName);
+    if (search) params.set('q', search);
+    params.set('page_size', String(pageSize));
+    return this.request(`/relation-options/?${params.toString()}`);
+  }
+
   /** Run a bulk action from admin.actions. POST .../actions/{actionName}/ with { ids }. */
   async runAction(
     appLabel: string,
@@ -298,6 +336,40 @@ class ApiClient {
         body: JSON.stringify({ ids: ids.map(String) }),
       }
     );
+  }
+
+  /** Bulk update for list_editable. POST .../bulk-update/ with { updates: [...] }. */
+  async bulkUpdate(
+    appLabel: string,
+    modelName: string,
+    updates: Array<{ id: string | number; [field: string]: unknown }>
+  ): Promise<{ success: boolean; updated_count: number; errors?: Array<{ id?: string; error: string }> }> {
+    return this.request(
+      `/${appLabel}/${modelName}/bulk-update/`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ updates }),
+      }
+    );
+  }
+
+  /** Get date hierarchy data for drill-down navigation. */
+  async getDateHierarchy(
+    appLabel: string,
+    modelName: string,
+    params?: { year?: number; month?: number }
+  ): Promise<{
+    field: string | null;
+    level: 'year' | 'month' | 'day';
+    year?: number;
+    month?: number;
+    dates: number[];
+  }> {
+    const searchParams = new URLSearchParams();
+    if (params?.year) searchParams.set('year', String(params.year));
+    if (params?.month) searchParams.set('month', String(params.month));
+    const query = searchParams.toString();
+    return this.request(`/${appLabel}/${modelName}/date-hierarchy/${query ? `?${query}` : ''}`);
   }
 }
 

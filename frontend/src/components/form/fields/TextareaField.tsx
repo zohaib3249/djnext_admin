@@ -5,7 +5,7 @@ import type { FieldSchema } from '@/types';
 
 interface TextareaFieldProps {
   field: FieldSchema;
-  value?: string;
+  value?: string | null;
   onChange?: (value: string) => void;
   onBlur?: () => void;
   error?: { message?: string };
@@ -13,17 +13,18 @@ interface TextareaFieldProps {
 
 export function TextareaField({
   field,
-  value = '',
+  value,
   onChange,
   onBlur,
   error,
 }: TextareaFieldProps) {
+  const safeValue = value ?? '';
   return (
     <div className="space-y-1.5 col-span-full">
       <label
         htmlFor={field.name}
         className="block text-sm font-medium text-foreground"
-      >
+        >
         {field.verbose_name}
         {field.required && !field.nullable && (
           <span className="text-destructive ml-0.5">*</span>
@@ -32,7 +33,7 @@ export function TextareaField({
       <textarea
         id={field.name}
         name={field.name}
-        value={value}
+        value={safeValue}
         onChange={(e) => onChange?.(e.target.value)}
         onBlur={onBlur}
         placeholder={field.help_text ?? undefined}

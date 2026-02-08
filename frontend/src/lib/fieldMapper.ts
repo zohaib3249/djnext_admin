@@ -10,6 +10,7 @@ import { CheckboxField } from '@/components/form/fields/CheckboxField';
 import { DateField } from '@/components/form/fields/DateField';
 import { DateTimeField } from '@/components/form/fields/DateTimeField';
 import { RelationField } from '@/components/form/fields/RelationField';
+import { ManyToManyField } from '@/components/form/fields/ManyToManyField';
 import { JsonField } from '@/components/form/fields/JsonField';
 
 type FieldComponentProps = {
@@ -39,6 +40,7 @@ const widgetToComponent: Record<string, ComponentType<FieldComponentProps>> = {
 };
 
 export function getFieldComponent(field: FieldSchema): ComponentType<FieldComponentProps> {
+  if (field.relation?.type === 'many_to_many') return ManyToManyField;
   if (field.relation) return RelationField;
   if (field.choices?.length) return SelectField;
   if (field.widget === 'json' || field.type === 'object') return JsonField;

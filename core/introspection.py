@@ -185,10 +185,15 @@ class ModelIntrospector:
             'fields': self._get_fields(request),
             'fieldsets': self._get_fieldsets(request),
             'list_display': self._get_list_display(request),
+            'list_display_links': self._get_list_display_links(request),
+            'list_editable': self._get_list_editable(request),
+            'date_hierarchy': self._get_date_hierarchy(request),
             'list_filter': self._get_list_filter(request),
             'search_fields': self._get_search_fields(request),
             'ordering': self._get_ordering(request),
             'actions': self._get_actions(request),
+            'object_tools': self._get_object_tools(request),
+            'custom_views': self._get_custom_views(request),
             'inlines': self._get_inlines(request),
         }
 
@@ -268,12 +273,112 @@ class ModelIntrospector:
 
         return result
 
-    def _get_list_display(self, request=None) -> List[str]:
-        """Get list_display from admin."""
+    def _get_list_display(self, request=None) -> List[Dict[str, Any]]:
+        """
+        Get list_display from admin with metadata.
+        Returns list of dicts with field info including:
+        - name: field name
+        - label: display label (from short_description or field verbose_name)
+        - is_html: whether field can contain HTML (via allow_html attribute)
+        - is_method: whether it's a computed/method field
+        - sortable: whether column is sortable
+        """
         list_display = self._get_admin_attr('list_display', None)
-        if list_display:
-            return [f for f in list_display if f != '__str__']
-        return ['id', '__str__']
+        if not list_display:
+            list_display = ['id']
+
+        result = []
+        model_fields = {f.name: f for f in self.model._meta.get_fields()}
+
+        for field_name in list_display:
+            if field_name == '__str__':
+                continue
+
+            field_info = {
+                'name': field_name,
+                'label': field_name.replace('_', ' ').title(),
+                'is_html': False,
+                'is_method': False,
+                'sortable': False,
+            }
+
+            # Check if it's a model field
+            if field_name in model_fields:
+                model_field = model_fields[field_name]
+                field_info['label'] = getattr(model_field, 'verbose_name', field_name).title()
+                field_info['sortable'] = True
+            else:
+                # It's a method field - check admin then model
+                method = getattr(self.admin, field_name, None) if self.admin else None
+                if not method:
+                    method = getattr(self.model, field_name, None)
+
+                if method and callable(method):
+                    field_info['is_method'] = True
+                    # Check for allow_html attribute (Django convention)
+                    field_info['is_html'] = getattr(method, 'allow_html', False)
+                    # Check for short_description
+                    short_desc = getattr(method, 'short_description', None)
+                    if short_desc:
+                        field_info['label'] = str(short_desc)
+                    # Check for admin_order_field for sortability
+                    order_field = getattr(method, 'admin_order_field', None)
+                    if order_field:
+                        field_info['sortable'] = True
+                        field_info['order_field'] = order_field
+
+            result.append(field_info)
+
+        return result
+
+    def _get_list_display_links(self, request=None) -> Optional[List[str]]:
+        """
+        Get list_display_links from admin.
+
+        Django Admin behavior:
+        - If None (default): first column in list_display is clickable
+        - If empty tuple/list: no columns are clickable
+        - If list of field names: those columns are clickable links to detail
+
+        Returns:
+        - None: default behavior (first column clickable)
+        - []: no links
+        - ['field1', 'field2']: specific fields are clickable
+        """
+        list_display_links = self._get_admin_attr('list_display_links', None)
+
+        # None means default behavior - return None to let frontend decide
+        if list_display_links is None:
+            return None
+
+        # Return as list
+        return list(list_display_links)
+
+    def _get_list_editable(self, request=None) -> List[str]:
+        """
+        Get list_editable from admin.
+
+        Returns list of field names that can be edited inline in the list view.
+        Note: fields in list_editable cannot be in list_display_links (Django rule).
+        """
+        list_editable = self._get_admin_attr('list_editable', None)
+        if not list_editable:
+            return []
+        return list(list_editable)
+
+    def _get_date_hierarchy(self, request=None) -> Optional[str]:
+        """
+        Get date_hierarchy field from admin.
+
+        Returns the field name to use for date-based drill-down navigation,
+        or None if not configured.
+        """
+        return self._get_admin_attr('date_hierarchy', None)
+
+    def _get_list_display_names(self, request=None) -> List[str]:
+        """Get just the field names for list_display (backward compatible)."""
+        list_display = self._get_list_display(request)
+        return [f['name'] for f in list_display]
 
     def _get_list_filter(self, request=None) -> List[str]:
         """Get list_filter from admin."""
@@ -314,6 +419,92 @@ class ModelIntrospector:
                 })
 
         return actions
+
+    def _get_object_tools(self, request=None) -> List[Dict[str, Any]]:
+        """
+        Get object tools (action buttons on detail page) from admin.
+
+        Object tools are defined via `djnext_object_tools` attribute on the admin:
+            djnext_object_tools = ['view_on_site', 'clone_object', 'send_email']
+
+        Each tool can be:
+        - A string referencing a method on the admin class
+        - Methods should accept (self, request, obj) and return a Response or dict
+
+        Method attributes:
+        - short_description: Button label (defaults to method name titleized)
+        - icon: Lucide icon name (e.g., 'ExternalLink', 'Copy', 'Mail')
+        - variant: Button variant ('primary', 'secondary', 'danger', 'ghost')
+        - confirm: Confirmation message (shows confirm dialog before executing)
+        """
+        tools = []
+        object_tools = self._get_admin_attr('djnext_object_tools', [])
+
+        for tool_item in object_tools:
+            if callable(tool_item):
+                tool_func = tool_item
+                tool_name = tool_func.__name__
+            else:
+                tool_name = tool_item
+                tool_func = getattr(self.admin, tool_name, None) if self.admin else None
+
+            if tool_func and callable(tool_func):
+                tools.append({
+                    'name': tool_name,
+                    'label': getattr(
+                        tool_func,
+                        'short_description',
+                        tool_name.replace('_', ' ').title()
+                    ),
+                    'icon': getattr(tool_func, 'icon', None),
+                    'variant': getattr(tool_func, 'variant', 'secondary'),
+                    'confirm': getattr(tool_func, 'confirm', None),
+                })
+
+        return tools
+
+    def _get_custom_views(self, request=None) -> List[Dict[str, Any]]:
+        """
+        Get custom views (get_urls equivalent) from admin.
+
+        Custom views are defined via `djnext_custom_views` attribute on the admin:
+            djnext_custom_views = ['export_csv', 'statistics', 'preview']
+
+        Each view should be a method on the admin class.
+
+        Method attributes:
+        - detail: True for detail-level (requires pk), False for list-level (default)
+        - methods: HTTP methods allowed, default ['GET']
+        - short_description: Description for documentation
+
+        Endpoints are accessible at:
+        - List-level: /api/admin/{app}/{model}/views/{view_name}/
+        - Detail-level: /api/admin/{app}/{model}/{pk}/views/{view_name}/
+        """
+        views = []
+        custom_views = self._get_admin_attr('djnext_custom_views', [])
+
+        for view_item in custom_views:
+            if callable(view_item):
+                view_func = view_item
+                view_name = view_func.__name__
+            else:
+                view_name = view_item
+                view_func = getattr(self.admin, view_name, None) if self.admin else None
+
+            if view_func and callable(view_func):
+                views.append({
+                    'name': view_name,
+                    'description': getattr(
+                        view_func,
+                        'short_description',
+                        view_name.replace('_', ' ').title()
+                    ),
+                    'detail': getattr(view_func, 'detail', False),
+                    'methods': getattr(view_func, 'methods', ['GET']),
+                })
+
+        return views
 
     def _get_inlines(self, request=None) -> List[Dict[str, Any]]:
         """Get inline configurations from admin."""

@@ -3,6 +3,19 @@ Custom serializer fields for DJNext Admin.
 """
 
 from rest_framework import serializers
+from django.utils.safestring import SafeData
+
+
+def is_html_safe(value):
+    """Check if a value is marked as HTML-safe (via format_html or mark_safe)."""
+    return isinstance(value, SafeData) or hasattr(value, '__html__')
+
+
+def wrap_html_value(value):
+    """Wrap an HTML-safe value for JSON transport."""
+    if is_html_safe(value):
+        return {'_html': True, 'content': str(value)}
+    return value
 
 
 class RelatedFieldSerializer(serializers.Serializer):

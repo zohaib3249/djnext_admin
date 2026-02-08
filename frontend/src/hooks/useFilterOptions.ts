@@ -24,12 +24,22 @@ export function useFilterOptions(schema: ModelSchema | null) {
   const queries = useQueries({
     queries: relationFields.map((field) => ({
       queryKey: ['filterOptions', field.relation!.app_label, field.relation!.model_name],
-      queryFn: () =>
-        api.autocomplete(
-          field.relation!.app_label,
-          field.relation!.model_name,
-          undefined
-        ),
+      queryFn: async () => {
+        try {
+          return await api.autocomplete(
+            field.relation!.app_label,
+            field.relation!.model_name,
+            undefined
+          );
+        } catch {
+          return await api.relationOptions(
+            field.relation!.app_label,
+            field.relation!.model_name,
+            undefined,
+            50
+          );
+        }
+      },
       staleTime: 5 * 60 * 1000,
       enabled: !!schema && !!field.relation?.app_label && !!field.relation?.model_name,
     })),

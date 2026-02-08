@@ -23,6 +23,7 @@ export function SelectField({
   const choices: FieldChoice[] = field.choices ?? [];
   const valueStr = value === null || value === undefined ? '' : String(value);
   const selected = choices.find((c) => String(c.value) === valueStr);
+  const rootValue = valueStr === '' || valueStr === undefined ? '__null__' : valueStr;
 
   return (
     <div className="space-y-1.5">
@@ -36,12 +37,13 @@ export function SelectField({
         )}
       </label>
       <Select.Root
-        value={valueStr || undefined}
+        value={rootValue}
         onValueChange={(v) => {
-          if (v === '' || v === '__null__') {
+          if (v === '__null__') {
             onChange?.(null);
             return;
           }
+          if (v === '') return;
           const first = choices.find((c) => String(c.value) === v);
           onChange?.(first?.value ?? v);
         }}
@@ -66,17 +68,16 @@ export function SelectField({
             sideOffset={4}
             className="z-50 max-h-60 overflow-auto rounded-lg border border-border bg-card shadow-lg animate-fade-in"
           >
-            {field.nullable && (
-              <Select.Item
-                value="__null__"
-                className="relative flex cursor-pointer select-none items-center rounded px-3 py-2 pl-8 text-sm text-foreground outline-none data-[highlighted]:bg-card-hover"
-              >
-                <Select.ItemIndicator className="absolute left-2 flex w-4 items-center justify-center">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-                </Select.ItemIndicator>
-                (empty)
-              </Select.Item>
-            )}
+            {/* Always render __null__ item so Radix has a matching value and shows it (not blank) */}
+            <Select.Item
+              value="__null__"
+              className="relative flex cursor-pointer select-none items-center rounded px-3 py-2 pl-8 text-sm text-foreground outline-none data-[highlighted]:bg-card-hover"
+            >
+              <Select.ItemIndicator className="absolute left-2 flex w-4 items-center justify-center">
+                <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              </Select.ItemIndicator>
+              {field.nullable ? '(empty)' : 'Select...'}
+            </Select.Item>
             {choices.map((opt) => {
               const optVal = String(opt.value);
               return (

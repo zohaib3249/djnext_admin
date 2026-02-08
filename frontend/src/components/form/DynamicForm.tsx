@@ -1,7 +1,9 @@
 'use client';
 
+import { useState } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { getDefaultValue } from '@/lib/fieldMapper';
+import { ApiValidationError } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { FormField } from './FormField';
 import { Fieldset } from './fieldsets/Fieldset';
@@ -19,6 +21,35 @@ interface DynamicFormProps {
 
 function flattenFieldNames(fields: (string | string[])[]): string[] {
   return fields.flatMap((f) => (Array.isArray(f) ? f : [f]));
+}
+
+/**
+ * Serialize form value for API. Relation fields must send only ID(s), never full objects
+ * (e.g. user must be "uuid-string", not { id, _display }), otherwise the API returns
+ * "is not a valid UUID".
+ */
+function serializePayloadValue(field: FieldSchema, value: unknown): unknown {
+  if (value === undefined) return undefined;
+  if (value === null || value === '') return null;
+  const relation = field.relation;
+  if (relation) {
+    if (relation.type === 'many_to_many' && Array.isArray(value)) {
+      return value.map((item) =>
+        typeof item === 'object' && item !== null && 'id' in item
+          ? (item as { id: unknown }).id
+          : item
+      );
+    }
+    // Foreign keys and one_to_one: send only ID (string or number), never { id, _display }
+    if (relation.type === 'foreign_key' || relation.type === 'one_to_one') {
+      if (typeof value === 'object' && value !== null && 'id' in value) {
+        return (value as { id: unknown }).id;
+      }
+      // Already an ID from RelationField selection
+      return value;
+    }
+  }
+  return value;
 }
 
 export function DynamicForm({
@@ -48,20 +79,38 @@ export function DynamicForm({
 
   const methods = useForm({
     defaultValues,
-    values: mode === 'edit' ? initialValues : undefined,
   });
 
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const {
     handleSubmit,
     formState: { errors, isSubmitting },
+    setError,
   } = methods;
 
   const submit = handleSubmit(async (data) => {
+    setSubmitError(null);
     const payload: Record<string, unknown> = {};
     editableFields.forEach((f) => {
-      if (data[f.name] !== undefined) payload[f.name] = data[f.name];
+      if (f.readonly) return; // do not send read-only fields in edit mode
+      if (data[f.name] !== undefined) {
+        payload[f.name] = serializePayloadValue(f, data[f.name]);
+      }
     });
-    await onSubmit(payload);
+    try {
+      await onSubmit(payload);
+    } catch (err) {
+      if (err instanceof ApiValidationError) {
+        setSubmitError(err.message);
+        Object.entries(err.details).forEach(([fieldName, messages]) => {
+          const msg = Array.isArray(messages) ? messages.join(' ') : String(messages);
+          setError(fieldName, { type: 'server', message: msg });
+        });
+        return;
+      }
+      setSubmitError(err instanceof Error ? err.message : 'Request failed');
+      throw err;
+    }
   });
 
   const formContent = (
@@ -128,6 +177,14 @@ export function DynamicForm({
   return (
     <FormProvider {...methods}>
       <form onSubmit={submit} className="space-y-6">
+        {submitError && (
+          <div
+            role="alert"
+            className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          >
+            {submitError}
+          </div>
+        )}
         {formContent}
       </form>
     </FormProvider>

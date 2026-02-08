@@ -14,7 +14,8 @@ interface TextFieldProps {
 }
 
 export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
-  ({ field, value = '', onChange, onBlur, error }, ref) => {
+  ({ field, value, onChange, onBlur, error }, ref) => {
+    const safeValue = value ?? '';
     const type =
       field.widget === 'password'
         ? 'password'
@@ -40,7 +41,7 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(
           id={field.name}
           name={field.name}
           type={type}
-          value={value}
+          value={safeValue}
           onChange={(e) => onChange?.(e.target.value)}
           onBlur={onBlur}
           placeholder={field.help_text ?? undefined}

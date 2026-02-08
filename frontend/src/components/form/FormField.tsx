@@ -16,7 +16,7 @@ export function FormField({ field, error }: FormFieldProps) {
   const rules = getValidationRules(field);
 
   const columnClass =
-    field.widget === 'textarea' || field.widget === 'richtext' || field.widget === 'json'
+    field.widget === 'textarea' || field.widget === 'richtext' || field.widget === 'json' || field.widget === 'multiselect'
       ? 'col-span-full'
       : '';
 
