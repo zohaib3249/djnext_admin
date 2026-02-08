@@ -1,0 +1,131 @@
+# Build frontend and publish Python package to PyPI.
+# Trigger: push tag v* (e.g. v0.1.0) or workflow_dispatch.
+# Secrets: PYPI_API_TOKEN (PyPI API token) for publishing.
+# Package dir: set to . if package (setup.py, frontend/) is at repo root; else djnext_admin for monorepo.
+name: Build and Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Build only, do not publish to PyPI'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  build-frontend:
+    name: Build frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set package directory
+        id: pkg
+        run: |
+          if [ -f setup.py ] && [ -d frontend ]; then
+            echo "dir=." >> $GITHUB_OUTPUT
+          else
+            echo "dir=djnext_admin" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ${{ steps.pkg.outputs.dir }}/frontend/package-lock.json
+
+      - name: Install and build
+        working-directory: ${{ steps.pkg.outputs.dir }}/frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-out
+          path: ${{ steps.pkg.outputs.dir }}/frontend/out
+          retention-days: 30
+
+  build-python:
+    name: Build Python package
+    runs-on: ubuntu-latest
+    needs: [build-frontend]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set package directory
+        id: pkg
+        run: |
+          if [ -f setup.py ] && [ -d frontend ]; then
+            echo "dir=." >> $GITHUB_OUTPUT
+          else
+            echo "dir=djnext_admin" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set version from tag or __init__.py
+        id: version
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            echo "Updating __init__.py to __version__ = \"$VERSION\""
+            sed -i.bak "s/^__version__ = .*/__version__ = '\''$VERSION'\''/" __init__.py
+            rm -f __init__.py.bak
+          else
+            VERSION=$(grep -E "^__version__\s*=\s*['\"]" __init__.py | sed -E "s/^__version__\s*=\s*['\"]([^'\"]+)['\"].*/\1/")
+            if [ -z "$VERSION" ]; then VERSION="0.1.0"; fi
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install build dependencies
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-build.txt
+
+      - name: Build wheel and sdist
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: python -m build
+
+      - name: Upload Python artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: ${{ steps.pkg.outputs.dir }}/dist/
+          retention-days: 14
+
+  publish-pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    needs: [build-python]
+    if: github.event_name != 'workflow_dispatch' || !github.event.inputs.dry_run
+    # Add secret PYPI_API_TOKEN in repo Settings > Secrets (or use environment with trusted publishing)
+    steps:
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: true
+          verbose: true

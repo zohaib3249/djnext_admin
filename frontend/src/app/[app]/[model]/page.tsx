@@ -162,10 +162,17 @@ export default function ModelListPage({
 
   const handleDeleteClick = (id: string, row?: Record<string, unknown>) => {
     setDeleteError(null);
+    const firstCol = schema?.list_display?.[0];
+    const firstKey =
+      firstCol === undefined
+        ? undefined
+        : typeof firstCol === 'string'
+          ? firstCol
+          : firstCol.name;
     const repr =
-      (row && schema?.list_display?.length
-        ? String(row[schema.list_display[0]] ?? row.id ?? row.pk ?? id)
-        : id);
+      row && firstKey !== undefined
+        ? String(row[firstKey] ?? row.id ?? row.pk ?? id)
+        : id;
     setDeleteTarget({ id, repr });
   };
 

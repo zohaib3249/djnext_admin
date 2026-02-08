@@ -21,7 +21,10 @@ export default function RootLayout({
           }}
         />
         {/* User customization: add public/djnext-custom.css to override styles */}
-        <link rel="stylesheet" href="/djnext-custom.css" />
+        <link
+          rel="stylesheet"
+          href={`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/djnext-custom.css`}
+        />
       </head>
       <body>
         <Providers>{children}</Providers>

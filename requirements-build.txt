@@ -1,0 +1,2 @@
+# CI/build only: deps to build the wheel and sdist (python -m build).
+build>=1.0.0

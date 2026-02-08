@@ -54,6 +54,12 @@ export interface SiteInfo {
   name: string;
   version: string;
   api_base: string;
+  /** Origin for API requests (e.g. 'http://localhost:8000'). From DJNEXT_ADMIN.API_ORIGIN or request. */
+  api_origin?: string;
+  /** Path prefix for API (e.g. '/api/djnext'). From DJNEXT_ADMIN.API_PATH or request. */
+  api_path?: string;
+  /** URL prefix where the admin frontend is served (e.g. '' or '/admin'). From DJNEXT_ADMIN.FRONTEND_BASE_PATH. */
+  frontend_base_path?: string;
   /** Layout configuration from backend */
   layout?: LayoutConfig;
   /** Theme configuration from backend */

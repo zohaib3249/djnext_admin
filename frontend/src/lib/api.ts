@@ -9,8 +9,8 @@ import type {
   ListParams,
 } from '@/types';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-const API_PATH = process.env.NEXT_PUBLIC_API_PATH || '/api/djnext';
+const DEFAULT_API_ORIGIN = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const DEFAULT_API_PATH = process.env.NEXT_PUBLIC_API_PATH || '/api/djnext';
 
 /** Thrown on 400 with field-level validation errors; details is { fieldName: string[] } */
 export class ApiValidationError extends Error {
@@ -28,11 +28,18 @@ class ApiClient {
   private accessToken: string | null = null;
 
   constructor() {
-    this.baseUrl = `${API_URL}${API_PATH}`;
+    this.baseUrl = `${DEFAULT_API_ORIGIN.replace(/\/$/, '')}${DEFAULT_API_PATH.startsWith('/') ? '' : '/'}${DEFAULT_API_PATH}`;
     // Load token from localStorage on init (client-side only)
     if (typeof window !== 'undefined') {
       this.accessToken = localStorage.getItem('djnext_access_token');
     }
+  }
+
+  /** Set API base URL from schema (settings/default). Call after loading global schema. */
+  setApiBaseFromSchema(apiOrigin: string, apiPath: string) {
+    const origin = (apiOrigin || '').replace(/\/$/, '');
+    const path = (apiPath || '').startsWith('/') ? apiPath : `/${apiPath}`;
+    this.baseUrl = `${origin}${path}`;
   }
 
   setAccessToken(token: string | null) {

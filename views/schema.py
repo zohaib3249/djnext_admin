@@ -56,10 +56,17 @@ class GlobalSchemaView(APIView):
 
     def _get_site_info(self, request, api_base):
         """Site-level information. Relative URLs in custom_css/js are made absolute."""
+        api_origin = (getattr(djnext_settings, 'API_ORIGIN', None) or '').strip()
+        if not api_origin:
+            api_origin = request.build_absolute_uri('/').rstrip('/')
+        api_path = (getattr(djnext_settings, 'API_PATH', None) or '').strip() or api_base
         info = {
             'name': djnext_settings.SITE_NAME,
             'version': djnext_settings.SITE_VERSION,
             'api_base': api_base,
+            'api_origin': api_origin,
+            'api_path': api_path,
+            'frontend_base_path': (getattr(djnext_settings, 'FRONTEND_BASE_PATH', None) or '') or '',
         }
 
         # Layout configuration (uses validated helper)

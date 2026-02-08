@@ -69,6 +69,17 @@ DEFAULTS = {
     'THEME_MODE': 'dark',
     'THEME_PRIMARY_COLOR': None,
     'THEME_ACCENT_COLOR': None,
+
+    # Frontend base path (served under this URL prefix; e.g. '' or '/admin')
+    # Exposed in schema so the SPA can use it at runtime; also set NEXT_PUBLIC_BASE_PATH when building.
+    'FRONTEND_BASE_PATH': '',
+
+    # API base URL for the frontend (so it can call the backend without env vars).
+    # Exposed in schema; frontend uses these when available, else falls back to NEXT_PUBLIC_* or defaults.
+    # API_ORIGIN: origin only (e.g. 'http://localhost:8000'). Empty means use request origin.
+    'API_ORIGIN': '',
+    # API_PATH: path prefix (e.g. '/api/djnext').
+    'API_PATH': '/api/djnext',
 }
 
 
