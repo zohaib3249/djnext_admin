@@ -13,9 +13,11 @@ import { DataTable } from '@/components/list/DataTable';
 import { SearchBar } from '@/components/list/SearchBar';
 import { FilterSidebar } from '@/components/list/FilterSidebar';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Plus, ChevronDown } from 'lucide-react';
 import { api } from '@/lib/api';
+import { titleName } from '@/lib/utils';
 
 export default function ModelListPage({
   params,
@@ -38,6 +40,9 @@ export default function ModelListPage({
   const [selectedAction, setSelectedAction] = useState('');
   const [actionDropdownOpen, setActionDropdownOpen] = useState(false);
   const [actionRunning, setActionRunning] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; repr: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Reset to page 1 when filters or search change so filtered list shows correct first page
   useEffect(() => {
@@ -120,12 +125,28 @@ export default function ModelListPage({
     );
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
+  const modelName = schema?.model?.verbose_name ?? titleName(params.model);
+
+  const handleDeleteClick = (id: string, row?: Record<string, unknown>) => {
+    setDeleteError(null);
+    const repr =
+      (row && schema?.list_display?.length
+        ? String(row[schema.list_display[0]] ?? row.id ?? row.pk ?? id)
+        : id);
+    setDeleteTarget({ id, repr });
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
     try {
-      await deleteOne(id);
+      await deleteOne(deleteTarget.id);
+      setDeleteTarget(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Delete failed');
+      setDeleteError(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -138,7 +159,7 @@ export default function ModelListPage({
         {/* Top bar: title, single search input, Add button - Django style */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h1 className="text-2xl font-semibold text-foreground">
-            {schema.model?.verbose_name_plural ?? params.model}
+            {schema.model?.verbose_name_plural ?? titleName(params.model)}
           </h1>
           <div className="flex flex-1 items-center justify-end gap-3">
             {schema.search_fields?.length ? (
@@ -153,7 +174,7 @@ export default function ModelListPage({
             {schema.permissions?.add && (
               <Link href={`${basePath}/create`} className="shrink-0 cursor-pointer">
                 <Button size="sm" leftIcon={<Plus className="h-4 w-4" />}>
-                  Add {schema.model?.verbose_name ?? 'item'}
+                  Add {(schema.model?.verbose_name ?? titleName(params.model)) || 'item'}
                 </Button>
               </Link>
             )}
@@ -204,9 +225,9 @@ export default function ModelListPage({
           </div>
         ) : null}
 
-        {/* Main: data table + right filter sidebar; page scrolls (no inner table scroll) */}
-        <div className="flex rounded-lg border border-border bg-card">
-          <div className="min-w-0 flex-1">
+        {/* Main: data table + right filter sidebar; table area matches filter height (min = filter height) */}
+        <div className="flex items-stretch rounded-lg border border-border bg-card">
+          <div className="min-w-0 flex-1 flex flex-col min-h-0">
             <DataTable
               schema={schema}
               data={results}
@@ -214,7 +235,7 @@ export default function ModelListPage({
               page={page}
               pageSize={pageSize}
               onPageChange={setPage}
-              onDelete={schema.permissions?.delete ? handleDelete : undefined}
+              onDelete={schema.permissions?.delete ? handleDeleteClick : undefined}
               basePath={basePath}
               pkField={schema.model?.pk_field}
               selection={
@@ -240,6 +261,28 @@ export default function ModelListPage({
           />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }
+        }}
+        title={`Delete ${modelName}?`}
+        description={
+          deleteError ? (
+            <span className="text-destructive">{deleteError}</span>
+          ) : deleteTarget ? (
+            <>This will permanently delete &quot;{deleteTarget.repr}&quot;. This action cannot be undone.</>
+          ) : null
+        }
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={handleDeleteConfirm}
+        loading={deleting}
+      />
     </AdminLayout>
   );
 }

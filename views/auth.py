@@ -5,9 +5,16 @@ Authentication endpoints.
 from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.core.mail import send_mail
+from django.conf import settings as django_settings
 
 from ..settings import djnext_settings
+
+User = get_user_model()
 
 
 class AuthViewSet(viewsets.ViewSet):
@@ -17,7 +24,7 @@ class AuthViewSet(viewsets.ViewSet):
 
     def get_permissions(self):
         """Set permissions based on action."""
-        if self.action in ['login', 'refresh']:
+        if self.action in ['login', 'refresh', 'password_reset_request', 'password_reset_confirm']:
             return [AllowAny()]
         return [IsAuthenticated()]
 
@@ -33,9 +40,6 @@ class AuthViewSet(viewsets.ViewSet):
         Response:
             {"user": {...}, "tokens": {...}}
         """
-        from django.contrib.auth import get_user_model
-        User = get_user_model()
-
         # Support both 'username' and 'email' as identifier
         identifier = request.data.get('username') or request.data.get('email')
         password = request.data.get('password')
@@ -155,3 +159,134 @@ class AuthViewSet(viewsets.ViewSet):
                 {'error': 'Invalid refresh token.'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
+
+    def password_reset_request(self, request):
+        """
+        POST /api/{path}/auth/password-reset/
+
+        Request: {"email": "user@example.com"}
+        Sends reset email if account exists. Always returns 200 for security.
+        """
+        email = (request.data.get('email') or '').strip().lower()
+        if not email:
+            return Response(
+                {'error': 'Email is required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user = None
+        if hasattr(User, 'EMAIL_FIELD') and User.EMAIL_FIELD:
+            user = User.objects.filter(**{f'{User.EMAIL_FIELD}__iexact': email}).first()
+        if not user and hasattr(User, 'username'):
+            user = User.objects.filter(username__iexact=email).first()
+        if user and user.is_active:
+            token = default_token_generator.make_token(user)
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            frontend_url = getattr(django_settings, 'DJNEXT_FRONTEND_URL', None) or request.build_absolute_uri('/')
+            reset_link = f'{frontend_url.rstrip("/")}/reset-password?uid={uid}&token={token}'
+            subject = getattr(django_settings, 'DJNEXT_PASSWORD_RESET_SUBJECT', 'Password reset')
+            body = getattr(
+                django_settings,
+                'DJNEXT_PASSWORD_RESET_BODY',
+                f'Use this link to reset your password: {reset_link}'
+            )
+            try:
+                send_mail(
+                    subject=subject,
+                    message=body,
+                    from_email=getattr(django_settings, 'DEFAULT_FROM_EMAIL', None) or 'noreply@localhost',
+                    recipient_list=[getattr(user, 'email', None) or email],
+                    fail_silently=True,
+                )
+            except Exception:
+                pass
+        return Response({'message': 'If an account exists with this email, you will receive a password reset link.'})
+
+    def password_reset_confirm(self, request):
+        """
+        POST /api/{path}/auth/password-reset/confirm/
+
+        Request: {"uid": "...", "token": "...", "new_password": "..."}
+        """
+        uid = request.data.get('uid')
+        token = request.data.get('token')
+        new_password = request.data.get('new_password')
+        if not uid or not token or not new_password:
+            return Response(
+                {'error': 'uid, token and new_password are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if len(new_password) < 8:
+            return Response(
+                {'error': 'Password must be at least 8 characters.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        try:
+            user_pk = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(pk=user_pk)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            return Response(
+                {'error': 'Invalid or expired reset link.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if not default_token_generator.check_token(user, token):
+            return Response(
+                {'error': 'Invalid or expired reset link.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+        return Response({'message': 'Password has been reset. You can now sign in.'})
+
+    def profile_update(self, request):
+        """
+        PATCH /api/{path}/auth/user/
+
+        Request: {"first_name": "...", "last_name": "...", "email": "..."}
+        """
+        user = request.user
+        data = request.data
+        allowed = {'first_name', 'last_name', 'email'}
+        updated = []
+        for key in allowed:
+            if key in data and hasattr(user, key):
+                setattr(user, key, (data[key] or '').strip() if isinstance(data[key], str) else data[key])
+                updated.append(key)
+        if updated:
+            user.save(update_fields=updated)
+        return Response({
+            'id': user.pk,
+            'username': getattr(user, 'username', None) or getattr(user, 'email', ''),
+            'email': getattr(user, 'email', ''),
+            'first_name': getattr(user, 'first_name', ''),
+            'last_name': getattr(user, 'last_name', ''),
+            'is_superuser': user.is_superuser,
+            'is_staff': user.is_staff,
+        })
+
+    def password_change(self, request):
+        """
+        POST /api/{path}/auth/password-change/
+
+        Request: {"current_password": "...", "new_password": "..."}
+        """
+        current = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+        if not current or not new_password:
+            return Response(
+                {'error': 'Current password and new password are required.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if len(new_password) < 8:
+            return Response(
+                {'error': 'New password must be at least 8 characters.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user = request.user
+        if not user.check_password(current):
+            return Response(
+                {'error': 'Current password is incorrect.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        user.set_password(new_password)
+        user.save(update_fields=['password'])
+        return Response({'message': 'Password has been updated.'})

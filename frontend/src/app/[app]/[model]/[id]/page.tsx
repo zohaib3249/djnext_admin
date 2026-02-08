@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { useModelSchema } from '@/hooks/useSchema';
 import { useDetail } from '@/hooks/useDetail';
+import { titleName } from '@/lib/utils';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ModelMediaInjector } from '@/components/layout/CustomMediaInjector';
 import { DynamicForm } from '@/components/form/DynamicForm';
@@ -29,16 +30,29 @@ function DetailFieldValue({
   verboseName: string;
   value: unknown;
 }) {
-  const display =
-    value === null || value === undefined
-      ? '—'
-      : typeof value === 'object' && value !== null && '_display' in value
-        ? (value as { _display?: string })._display ?? JSON.stringify(value)
-        : String(value);
+  let display: string;
+  if (value === null || value === undefined) {
+    display = '—';
+  } else if (fieldName === 'changes' && typeof value === 'object' && value !== null && !Array.isArray(value)) {
+    const obj = value as Record<string, { old?: unknown; new?: unknown }>;
+    const parts = Object.entries(obj).map(([f, d]) => {
+      if (d && typeof d === 'object' && ('old' in d || 'new' in d)) {
+        const o = d.old == null ? 'null' : String(d.old);
+        const n = d.new == null ? 'null' : String(d.new);
+        return `${f}: ${o} → ${n}`;
+      }
+      return f;
+    });
+    display = parts.length ? parts.join('\n') : '—';
+  } else if (typeof value === 'object' && value !== null && '_display' in value) {
+    display = (value as { _display?: string })._display ?? JSON.stringify(value);
+  } else {
+    display = String(value);
+  }
   return (
     <div>
       <dt className="text-sm font-medium text-muted-foreground">{verboseName}</dt>
-      <dd className="mt-1 text-sm text-foreground">{display}</dd>
+      <dd className="mt-1 text-sm text-foreground whitespace-pre-wrap">{display}</dd>
     </div>
   );
 }
@@ -118,11 +132,15 @@ function DetailViewSections({
 
 export default function ModelDetailPage({
   params,
+  searchParams,
 }: {
   params: { app: string; model: string; id: string };
+  searchParams?: { edit?: string };
 }) {
   const router = useRouter();
-  const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [mode, setMode] = useState<'view' | 'edit'>(
+    searchParams?.edit === '1' ? 'edit' : 'view'
+  );
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { data: schema, isLoading: schemaLoading } = useModelSchema(
     params.app,
@@ -183,7 +201,7 @@ export default function ModelDetailPage({
             </Link>
             <div>
               <h1 className="text-2xl font-semibold text-foreground">
-                {schema.model?.verbose_name ?? params.model}
+                {schema.model?.verbose_name ?? titleName(params.model)}
               </h1>
               <p className="text-sm text-muted-foreground">
                 {(data as Record<string, string>)?._display ?? `#${params.id}`}

@@ -10,6 +10,7 @@ import { CheckboxField } from '@/components/form/fields/CheckboxField';
 import { DateField } from '@/components/form/fields/DateField';
 import { DateTimeField } from '@/components/form/fields/DateTimeField';
 import { RelationField } from '@/components/form/fields/RelationField';
+import { JsonField } from '@/components/form/fields/JsonField';
 
 type FieldComponentProps = {
   field: FieldSchema;
@@ -34,11 +35,13 @@ const widgetToComponent: Record<string, ComponentType<FieldComponentProps>> = {
   time: DateTimeField,
   hidden: TextField,
   password: TextField,
+  json: JsonField,
 };
 
 export function getFieldComponent(field: FieldSchema): ComponentType<FieldComponentProps> {
   if (field.relation) return RelationField;
   if (field.choices?.length) return SelectField;
+  if (field.widget === 'json' || field.type === 'object') return JsonField;
   return widgetToComponent[field.widget] ?? TextField;
 }
 

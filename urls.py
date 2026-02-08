@@ -15,6 +15,7 @@ from rest_framework.routers import DefaultRouter
 from .views.schema import GlobalSchemaView, ModelSchemaView
 from .views.auth import AuthViewSet
 from .views.search import GlobalSearchView
+from .views.health import HealthView
 from .views.factory import ViewSetFactory
 from .core.registry import get_registered_models
 from .settings import djnext_settings
@@ -62,6 +63,9 @@ app_name = 'djnext_admin'
 
 # URL patterns
 urlpatterns = [
+    # Health / liveness (no auth) – poll every 1 min for monitoring
+    path('health/', HealthView.as_view(), name='health'),
+
     # Global schema endpoint
     path('schema/', GlobalSchemaView.as_view(), name='global-schema'),
 
@@ -71,8 +75,11 @@ urlpatterns = [
     # Authentication endpoints
     path('auth/login/', AuthViewSet.as_view({'post': 'login'}), name='auth-login'),
     path('auth/logout/', AuthViewSet.as_view({'post': 'logout'}), name='auth-logout'),
-    path('auth/user/', AuthViewSet.as_view({'get': 'user'}), name='auth-user'),
+    path('auth/user/', AuthViewSet.as_view({'get': 'user', 'patch': 'profile_update'}), name='auth-user'),
     path('auth/refresh/', AuthViewSet.as_view({'post': 'refresh'}), name='auth-refresh'),
+    path('auth/password-reset/', AuthViewSet.as_view({'post': 'password_reset_request'}), name='auth-password-reset'),
+    path('auth/password-reset/confirm/', AuthViewSet.as_view({'post': 'password_reset_confirm'}), name='auth-password-reset-confirm'),
+    path('auth/password-change/', AuthViewSet.as_view({'post': 'password_change'}), name='auth-password-change'),
 
     # Model-specific schema endpoint
     path(

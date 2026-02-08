@@ -29,7 +29,8 @@
     "@radix-ui/react-tabs": "^1.0.4",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-separator": "^1.0.3",
-    "react-hook-form": "^7.52.0"
+    "react-hook-form": "^7.52.0",
+    "recharts": "^2.12.7"
   },
   "devDependencies": {
     "@types/node": "^20.12.0",

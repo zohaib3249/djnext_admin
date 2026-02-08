@@ -3,19 +3,39 @@
 @tailwind utilities;
 
 @layer base {
-  /* Light theme (default) */
+  /* ===========================================
+     BASE VARIABLES (Defaults)
+     =========================================== */
   :root {
+    --radius: 0.5rem;
+    --radius-lg: 0.75rem;
+    --blur: 0;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+
+  /* ===========================================
+     LAYOUT: BASIC (Default)
+     Clean, solid colors, production-ready
+     =========================================== */
+
+  /* Basic Light */
+  :root,
+  :root.layout-basic,
+  .layout-basic {
     --background: #ffffff;
     --background-secondary: #f4f4f5;
+    --background-tertiary: #e4e4e7;
     --foreground: #18181b;
     --foreground-muted: #71717a;
     --primary: #6366f1;
     --primary-hover: #818cf8;
+    --primary-foreground: #ffffff;
     --accent: #22d3ee;
     --accent-hover: #67e8f9;
     --success: #22c55e;
     --warning: #f59e0b;
     --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
     --border: #e4e4e7;
     --border-hover: #d4d4d8;
     --card: #fafafa;
@@ -26,19 +46,23 @@
     --skeleton-shine: #d4d4d8;
   }
 
-  /* Dark theme */
-  .dark {
+  /* Basic Dark */
+  .dark,
+  .dark.layout-basic {
     --background: #000000;
     --background-secondary: #0a0a0a;
+    --background-tertiary: #141414;
     --foreground: #fafafa;
     --foreground-muted: #a1a1aa;
     --primary: #6366f1;
     --primary-hover: #818cf8;
+    --primary-foreground: #ffffff;
     --accent: #22d3ee;
     --accent-hover: #67e8f9;
     --success: #22c55e;
     --warning: #f59e0b;
     --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
     --border: #27272a;
     --border-hover: #3f3f46;
     --card: #0a0a0a;
@@ -49,6 +73,275 @@
     --skeleton-shine: #2a2a2a;
   }
 
+  /* ===========================================
+     LAYOUT: GLASSMORPHISM (NEW)
+     True frosted glass effect with blur
+     =========================================== */
+
+  /* Glassmorphism Light */
+  :root.layout-glassmorphism,
+  .layout-glassmorphism:not(.dark) {
+    --background: #f0f4f8;
+    --background-secondary: rgba(255, 255, 255, 0.7);
+    --background-tertiary: rgba(255, 255, 255, 0.5);
+    --foreground: #1a1a2e;
+    --foreground-muted: #64748b;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --primary-foreground: #ffffff;
+    --primary-glow: rgba(59, 130, 246, 0.35);
+    --accent: #06b6d4;
+    --accent-glow: rgba(6, 182, 212, 0.3);
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: rgba(255, 255, 255, 0.6);
+    --border-hover: rgba(255, 255, 255, 0.9);
+    --card: rgba(255, 255, 255, 0.65);
+    --card-hover: rgba(255, 255, 255, 0.85);
+    --input: rgba(255, 255, 255, 0.5);
+    --input-border: rgba(255, 255, 255, 0.6);
+    --skeleton: rgba(255, 255, 255, 0.4);
+    --skeleton-shine: rgba(255, 255, 255, 0.7);
+    --radius: 1rem;
+    --radius-lg: 1.25rem;
+    --blur: 16px;
+    --blur-strong: 24px;
+    --shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  /* Glassmorphism Dark */
+  html.dark.layout-glassmorphism,
+  .dark.layout-glassmorphism {
+    --background: #0c1222;
+    --background-secondary: rgba(255, 255, 255, 0.08);
+    --background-tertiary: rgba(255, 255, 255, 0.04);
+    --foreground: #f8fafc;
+    --foreground-muted: rgba(248, 250, 252, 0.6);
+    --primary: #60a5fa;
+    --primary-hover: #93c5fd;
+    --primary-foreground: #ffffff;
+    --primary-glow: rgba(96, 165, 250, 0.4);
+    --accent: #22d3ee;
+    --accent-glow: rgba(34, 211, 238, 0.3);
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: rgba(255, 255, 255, 0.12);
+    --border-hover: rgba(255, 255, 255, 0.2);
+    --card: rgba(255, 255, 255, 0.06);
+    --card-hover: rgba(255, 255, 255, 0.1);
+    --input: rgba(255, 255, 255, 0.06);
+    --input-border: rgba(255, 255, 255, 0.12);
+    --skeleton: rgba(255, 255, 255, 0.06);
+    --skeleton-shine: rgba(255, 255, 255, 0.12);
+    --radius: 1rem;
+    --radius-lg: 1.25rem;
+    --blur: 16px;
+    --blur-strong: 24px;
+    --shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  /* ===========================================
+     LAYOUT: AURORA
+     Gradient background with glow effects
+     (Previously glassmorphism)
+     =========================================== */
+
+  /* Aurora Light */
+  :root.layout-aurora,
+  .layout-aurora:not(.dark) {
+    --background: #e8eef5;
+    --background-secondary: rgba(255, 255, 255, 0.6);
+    --background-tertiary: rgba(255, 255, 255, 0.4);
+    --foreground: #1e1e2e;
+    --foreground-muted: rgba(30, 30, 46, 0.6);
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --primary-foreground: #ffffff;
+    --primary-glow: rgba(99, 102, 241, 0.3);
+    --accent: #67e8f9;
+    --accent-glow: rgba(103, 232, 249, 0.3);
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: rgba(255, 255, 255, 0.5);
+    --border-hover: rgba(255, 255, 255, 0.8);
+    --card: rgba(255, 255, 255, 0.6);
+    --card-hover: rgba(255, 255, 255, 0.8);
+    --input: rgba(255, 255, 255, 0.4);
+    --input-border: rgba(255, 255, 255, 0.5);
+    --skeleton: rgba(255, 255, 255, 0.3);
+    --skeleton-shine: rgba(255, 255, 255, 0.5);
+    --radius: 0.75rem;
+    --radius-lg: 1rem;
+    --blur: 20px;
+    --blur-strong: 40px;
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Aurora Dark */
+  html.dark.layout-aurora,
+  .dark.layout-aurora {
+    --background: #1a0a2e;
+    --background-secondary: rgba(255, 255, 255, 0.05);
+    --background-tertiary: rgba(255, 255, 255, 0.03);
+    --foreground: #ffffff;
+    --foreground-muted: rgba(255, 255, 255, 0.6);
+    --primary: #818cf8;
+    --primary-hover: #a5b4fc;
+    --primary-foreground: #ffffff;
+    --primary-glow: rgba(129, 140, 248, 0.4);
+    --accent: #67e8f9;
+    --accent-glow: rgba(103, 232, 249, 0.3);
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: rgba(255, 255, 255, 0.1);
+    --border-hover: rgba(255, 255, 255, 0.2);
+    --card: rgba(255, 255, 255, 0.05);
+    --card-hover: rgba(255, 255, 255, 0.08);
+    --input: rgba(255, 255, 255, 0.05);
+    --input-border: rgba(255, 255, 255, 0.1);
+    --skeleton: rgba(255, 255, 255, 0.05);
+    --skeleton-shine: rgba(255, 255, 255, 0.1);
+    --radius: 0.75rem;
+    --radius-lg: 1rem;
+    --blur: 20px;
+    --blur-strong: 40px;
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  }
+
+  /* ===========================================
+     LAYOUT: NEUMORPHISM
+     Soft UI, extruded shadows, tactile
+     =========================================== */
+
+  /* Neumorphism Light */
+  :root.layout-neumorphism,
+  .layout-neumorphism:not(.dark) {
+    --background: #e0e5ec;
+    --background-secondary: #e0e5ec;
+    --background-tertiary: #e0e5ec;
+    --foreground: #333333;
+    --foreground-muted: #666666;
+    --primary: #6366f1;
+    --primary-hover: #818cf8;
+    --primary-foreground: #ffffff;
+    --accent: #22d3ee;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: transparent;
+    --border-hover: transparent;
+    --card: #e0e5ec;
+    --card-hover: #e0e5ec;
+    --input: #e0e5ec;
+    --input-border: transparent;
+    --skeleton: #d0d5dc;
+    --skeleton-shine: #e8edf4;
+    --radius: 1rem;
+    --radius-lg: 1.5rem;
+    --blur: 0;
+    --shadow-dark: #a3b1c6;
+    --shadow-light: #ffffff;
+    --shadow-raised: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+    --shadow-raised-sm: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+    --shadow-inset: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+    --shadow-inset-sm: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+  }
+
+  /* Neumorphism Dark - Higher specificity */
+  html.dark.layout-neumorphism,
+  .dark.layout-neumorphism {
+    --background: #1a1a2e;
+    --background-secondary: #1a1a2e;
+    --background-tertiary: #1a1a2e;
+    --foreground: #eaeaea;
+    --foreground-muted: #8888aa;
+    --primary: #6366f1;
+    --primary-hover: #818cf8;
+    --primary-foreground: #ffffff;
+    --accent: #22d3ee;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: transparent;
+    --border-hover: transparent;
+    --card: #1a1a2e;
+    --card-hover: #1a1a2e;
+    --input: #1a1a2e;
+    --input-border: transparent;
+    --skeleton: #151525;
+    --skeleton-shine: #1f1f35;
+    --radius: 1rem;
+    --radius-lg: 1.5rem;
+    --shadow-dark: #12121f;
+    --shadow-light: #22223d;
+    --shadow-raised: 6px 6px 12px var(--shadow-dark), -6px -6px 12px var(--shadow-light);
+    --shadow-raised-sm: 3px 3px 6px var(--shadow-dark), -3px -3px 6px var(--shadow-light);
+    --shadow-inset: inset 4px 4px 8px var(--shadow-dark), inset -4px -4px 8px var(--shadow-light);
+    --shadow-inset-sm: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light);
+  }
+
+  /* ===========================================
+     LAYOUT: MINIMAL
+     Ultra-clean, content-focused, monochrome
+     =========================================== */
+
+  /* Minimal Light */
+  :root.layout-minimal,
+  .layout-minimal:not(.dark) {
+    --background: #ffffff;
+    --background-secondary: #ffffff;
+    --background-tertiary: #fafafa;
+    --foreground: #000000;
+    --foreground-muted: #666666;
+    --primary: #000000;
+    --primary-hover: #333333;
+    --primary-foreground: #ffffff;
+    --accent: #000000;
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
+    --border: #eeeeee;
+    --border-hover: #dddddd;
+    --card: transparent;
+    --card-hover: rgba(0, 0, 0, 0.02);
+    --input: transparent;
+    --input-border: #eeeeee;
+    --skeleton: #eeeeee;
+    --skeleton-shine: #f5f5f5;
+    --radius: 0;
+    --radius-lg: 0;
+    --blur: 0;
+    --shadow: none;
+  }
+
+  /* Minimal Dark - Higher specificity */
+  html.dark.layout-minimal,
+  .dark.layout-minimal {
+    --background: #000000;
+    --background-secondary: #000000;
+    --background-tertiary: #0a0a0a;
+    --foreground: #ffffff;
+    --foreground-muted: #666666;
+    --primary: #ffffff;
+    --primary-hover: #cccccc;
+    --primary-foreground: #000000;
+    --accent: #ffffff;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: #222222;
+    --border-hover: #333333;
+    --card: transparent;
+    --card-hover: rgba(255, 255, 255, 0.03);
+    --input: transparent;
+    --input-border: #222222;
+    --skeleton: #1a1a1a;
+    --skeleton-shine: #2a2a2a;
+    --radius: 0;
+    --radius-lg: 0;
+    --shadow: none;
+  }
+
+  /* ===========================================
+     BASE STYLES
+     =========================================== */
+
   html {
     @apply antialiased;
   }
@@ -57,6 +350,7 @@
     background-color: var(--background);
     color: var(--foreground);
     min-height: 100vh;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   /* Focus visible for accessibility */
@@ -75,5 +369,105 @@
       animation-iteration-count: 1 !important;
       transition-duration: 0.01ms !important;
     }
+  }
+}
+
+/* ===========================================
+   LAYOUT-SPECIFIC COMPONENT STYLES
+   =========================================== */
+
+@layer components {
+  /* Glassmorphism specific - frosted glass effect */
+  .layout-glassmorphism .glass-effect,
+  .layout-aurora .glass-effect {
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+  }
+
+  .layout-glassmorphism .glass-card,
+  .layout-aurora .glass-card {
+    background: var(--card);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+  }
+
+  /* Aurora specific - glow effects */
+  .layout-aurora .glow-card {
+    background: var(--card);
+    backdrop-filter: blur(var(--blur));
+    -webkit-backdrop-filter: blur(var(--blur));
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow:
+      0 0 20px var(--primary-glow),
+      var(--shadow);
+  }
+
+  .layout-aurora .glow-card:hover {
+    box-shadow:
+      0 0 30px var(--primary-glow),
+      0 0 60px var(--accent-glow),
+      var(--shadow);
+  }
+
+  /* Glassmorphism - subtle mesh gradient background */
+  .layout-glassmorphism body {
+    background:
+      radial-gradient(at 20% 20%, rgba(59, 130, 246, 0.15) 0%, transparent 50%),
+      radial-gradient(at 80% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 50%),
+      var(--background);
+  }
+
+  /* Aurora background effect - gradient orbs */
+  .layout-aurora body {
+    background: linear-gradient(135deg, var(--background) 0%, #2a1a4e 50%, var(--background) 100%);
+  }
+
+  /* Neumorphism specific */
+  .layout-neumorphism .neu-raised {
+    background: var(--background);
+    box-shadow: var(--shadow-raised);
+    border-radius: var(--radius-lg);
+    border: none;
+  }
+
+  .layout-neumorphism .neu-raised:hover {
+    box-shadow: 8px 8px 16px var(--shadow-dark), -8px -8px 16px var(--shadow-light);
+  }
+
+  .layout-neumorphism .neu-raised:active,
+  .layout-neumorphism .neu-inset {
+    box-shadow: var(--shadow-inset);
+  }
+
+  .layout-neumorphism .neu-input {
+    background: var(--background);
+    box-shadow: var(--shadow-inset-sm);
+    border: none;
+  }
+
+  /* Minimal specific */
+  .layout-minimal .min-card {
+    border: 1px solid var(--border);
+    padding: 2rem;
+  }
+
+  .layout-minimal .min-input {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .layout-minimal .min-button {
+    background: transparent;
+    border: 1px solid currentColor;
+  }
+
+  .layout-minimal .min-button:hover {
+    background: var(--foreground);
+    color: var(--background);
   }
 }

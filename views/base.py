@@ -6,8 +6,27 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
+from ..audit import log_audit
+from ..models import AuditLog
 from ..permissions import DJNextModelPermission
 from ..settings import djnext_settings
+
+
+def _audit_serialize(value):
+    """Make a value JSON-serializable for audit log storage."""
+    if value is None:
+        return None
+    if hasattr(value, 'pk'):
+        return value.pk
+    if hasattr(value, 'isoformat'):
+        return value.isoformat()
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_audit_serialize(v) for v in value]
+    if isinstance(value, dict):
+        return {str(k): _audit_serialize(v) for k, v in value.items()}
+    return str(value)
 
 
 class DJNextPagination(PageNumberPagination):
@@ -110,10 +129,28 @@ class DJNextBaseViewSet(viewsets.ModelViewSet):
             except TypeError:
                 pass
 
+        log_audit('create', self.request, instance=instance)
         return instance
 
     def perform_update(self, serializer):
-        """Handle object update with hooks."""
+        """Handle object update with hooks. Computes changes for audit log."""
+        old_instance = serializer.instance
+        validated = serializer.validated_data
+        changes = {}
+        if old_instance is not None and validated:
+            for field_name in validated:
+                if not hasattr(old_instance, field_name):
+                    continue
+                try:
+                    old_val = getattr(old_instance, field_name, None)
+                    new_val = validated[field_name]
+                    old_ser = _audit_serialize(old_val)
+                    new_ser = _audit_serialize(new_val)
+                    if old_ser != new_ser:
+                        changes[field_name] = {'old': old_ser, 'new': new_ser}
+                except Exception:
+                    continue
+
         instance = serializer.save()
 
         if self.model_admin and hasattr(self.model_admin, 'save_model'):
@@ -127,10 +164,12 @@ class DJNextBaseViewSet(viewsets.ModelViewSet):
             except TypeError:
                 pass
 
+        log_audit('update', self.request, instance=instance, changes=changes)
         return instance
 
     def perform_destroy(self, instance):
         """Handle object deletion with hooks."""
+        log_audit('delete', self.request, instance=instance)
         # Call admin's delete_model if exists
         if self.model_admin and hasattr(self.model_admin, 'delete_model'):
             try:
@@ -146,21 +185,27 @@ class DJNextBaseViewSet(viewsets.ModelViewSet):
     # ==========================================
 
     def create(self, request, *args, **kwargs):
-        """Override create to add message."""
+        """Override create to add message. AuditLog is view-only."""
+        if self.model == AuditLog:
+            return Response({'detail': 'Cannot create audit log entries.'}, status=status.HTTP_403_FORBIDDEN)
         response = super().create(request, *args, **kwargs)
         if response.status_code == status.HTTP_201_CREATED:
             response.data['_message'] = f'{self.model._meta.verbose_name} created successfully.'
         return response
 
     def update(self, request, *args, **kwargs):
-        """Override update to add message."""
+        """Override update to add message. AuditLog is view-only."""
+        if self.model == AuditLog:
+            return Response({'detail': 'Cannot modify audit log entries.'}, status=status.HTTP_403_FORBIDDEN)
         response = super().update(request, *args, **kwargs)
         if response.status_code == status.HTTP_200_OK:
             response.data['_message'] = f'{self.model._meta.verbose_name} updated successfully.'
         return response
 
     def destroy(self, request, *args, **kwargs):
-        """Override delete with message."""
+        """Override delete with message. AuditLog is view-only."""
+        if self.model == AuditLog:
+            return Response({'detail': 'Cannot delete audit log entries.'}, status=status.HTTP_403_FORBIDDEN)
         instance = self.get_object()
 
         try:

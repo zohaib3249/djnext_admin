@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useModelSchema } from '@/hooks/useSchema';
 import { useDetail } from '@/hooks/useDetail';
 import { api } from '@/lib/api';
+import { titleName } from '@/lib/utils';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ModelMediaInjector } from '@/components/layout/CustomMediaInjector';
 import { DynamicForm } from '@/components/form/DynamicForm';
@@ -85,7 +86,7 @@ export default function ModelCreatePage({
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <h1 className="text-2xl font-semibold text-foreground">
-            Add {schema.model?.verbose_name ?? params.model}
+            Add {(schema.model?.verbose_name ?? titleName(params.model)) || 'item'}
           </h1>
         </div>
 

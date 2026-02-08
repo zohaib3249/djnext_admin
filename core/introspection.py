@@ -6,6 +6,13 @@ JSON schema for frontend consumption.
 """
 
 from typing import Dict, List, Any, Optional
+
+
+def _title_name(s):
+    """Capitalize model/verbose name for display (e.g. 'user address' -> 'User Address')."""
+    if s is None:
+        return ''
+    return str(s).replace('_', ' ').title()
 from django.db import models
 from django.db.models.fields import Field
 from django.db.models.fields.related import RelatedField
@@ -191,8 +198,8 @@ class ModelIntrospector:
             'name': self.opts.object_name,
             'app_label': self.opts.app_label,
             'model_name': self.opts.model_name,
-            'verbose_name': str(self.opts.verbose_name),
-            'verbose_name_plural': str(self.opts.verbose_name_plural),
+            'verbose_name': _title_name(self.opts.verbose_name),
+            'verbose_name_plural': _title_name(self.opts.verbose_name_plural),
             'db_table': self.opts.db_table,
             'pk_field': self.opts.pk.name if self.opts.pk else 'id',
         }
@@ -320,8 +327,8 @@ class ModelIntrospector:
                     'model': inline_model._meta.label,
                     'app_label': inline_model._meta.app_label,
                     'model_name': inline_model._meta.model_name,
-                    'verbose_name': str(inline_model._meta.verbose_name),
-                    'verbose_name_plural': str(inline_model._meta.verbose_name_plural),
+                    'verbose_name': _title_name(inline_model._meta.verbose_name),
+                    'verbose_name_plural': _title_name(inline_model._meta.verbose_name_plural),
                     'fk_name': getattr(inline_class, 'fk_name', None),
                     'extra': getattr(inline_class, 'extra', 3),
                     'min_num': getattr(inline_class, 'min_num', 0),

@@ -145,6 +145,18 @@ def get_model_permissions(user, model) -> Dict[str, bool]:
     Returns:
         dict: {add: bool, change: bool, delete: bool, view: bool}
     """
+    app_label = model._meta.app_label
+    model_name = model._meta.model_name
+
+    # AuditLog is view-only: no add, edit, or delete in admin or frontend
+    if app_label == 'djnext_admin' and model_name == 'auditlog':
+        return {
+            'add': False,
+            'change': False,
+            'delete': False,
+            'view': True,
+        }
+
     if user.is_superuser and djnext_settings.SUPERUSER_FULL_ACCESS:
         return {
             'add': True,
@@ -152,9 +164,6 @@ def get_model_permissions(user, model) -> Dict[str, bool]:
             'delete': True,
             'view': True,
         }
-
-    app_label = model._meta.app_label
-    model_name = model._meta.model_name
 
     return {
         'add': user.has_perm(f'{app_label}.add_{model_name}'),

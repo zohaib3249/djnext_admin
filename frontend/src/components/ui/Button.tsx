@@ -31,11 +31,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       'inline-flex items-center justify-center font-medium rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:pointer-events-none cursor-pointer';
 
     const variants = {
-      primary: 'bg-primary text-white hover:bg-primary-hover focus:ring-primary',
+      primary: 'bg-primary text-[var(--primary-foreground)] hover:bg-primary-hover focus:ring-primary',
       secondary:
         'bg-background-secondary text-foreground border border-border hover:bg-card-hover focus:ring-border',
       danger:
-        'bg-destructive text-white hover:opacity-90 focus:ring-destructive',
+        'bg-destructive text-[var(--destructive-foreground)] hover:opacity-90 focus:ring-destructive',
       ghost:
         'bg-transparent text-foreground hover:bg-card focus:ring-muted-foreground',
     };

@@ -1,10 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-import { Menu, User, LogOut, Settings, Sun, Moon, Monitor } from 'lucide-react';
+import Link from 'next/link';
+import { Menu, User, LogOut, Settings, Sun, Moon, Monitor, Palette } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useLayout } from '@/contexts/LayoutContext';
 import { GlobalSearch } from './GlobalSearch';
-import type { User as UserType } from '@/types';
+import type { User as UserType, LayoutId } from '@/types';
+
+const LAYOUT_LABELS: Record<LayoutId, string> = {
+  basic: 'Basic',
+  glassmorphism: 'Glass',
+  aurora: 'Aurora',
+  neumorphism: 'Soft',
+  minimal: 'Minimal',
+};
 
 interface HeaderProps {
   user: UserType;
@@ -16,7 +26,9 @@ interface HeaderProps {
 export function Header({ user, siteName, onMenuClick, onLogout }: HeaderProps) {
   const [open, setOpen] = useState(false);
   const [themeOpen, setThemeOpen] = useState(false);
+  const [layoutOpen, setLayoutOpen] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
+  const { layout, setLayout, allowSwitch, options } = useLayout();
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-border bg-background px-4">
@@ -37,6 +49,53 @@ export function Header({ user, siteName, onMenuClick, onLogout }: HeaderProps) {
       <GlobalSearch />
 
       <div className="flex items-center gap-2 shrink-0">
+        {/* Layout switcher */}
+        {allowSwitch && options.length > 1 && (
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setLayoutOpen((o) => !o)}
+              className="flex h-9 items-center gap-1.5 px-2 rounded-lg text-muted-foreground transition-colors duration-200 hover:bg-card-hover hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+              aria-label="Switch layout"
+              aria-expanded={layoutOpen}
+            >
+              <Palette className="h-4 w-4" />
+              <span className="text-sm hidden sm:inline">{LAYOUT_LABELS[layout] || layout}</span>
+            </button>
+            {layoutOpen && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  aria-hidden
+                  onClick={() => setLayoutOpen(false)}
+                />
+                <div
+                  className="absolute right-0 top-full z-50 mt-1 w-40 rounded-lg border border-border bg-card py-1 shadow-lg animate-fade-in"
+                  role="menu"
+                >
+                  {options.map((id) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        setLayout(id);
+                        setLayoutOpen(false);
+                      }}
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-sm transition-colors cursor-pointer ${
+                        layout === id
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-foreground hover:bg-card-hover'
+                      }`}
+                    >
+                      <span>{LAYOUT_LABELS[id] || id}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Theme switcher */}
         <div className="relative">
           <button
@@ -120,14 +179,14 @@ export function Header({ user, siteName, onMenuClick, onLogout }: HeaderProps) {
                   {user.email}
                 </p>
               </div>
-              <button
-                type="button"
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground transition-colors hover:bg-card-hover cursor-pointer"
+              <Link
+                href="/settings"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground transition-colors hover:bg-card-hover"
                 onClick={() => setOpen(false)}
               >
                 <Settings className="h-4 w-4" />
                 Settings
-              </button>
+              </Link>
               <button
                 type="button"
                 onClick={() => {

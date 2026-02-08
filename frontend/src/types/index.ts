@@ -18,6 +18,8 @@ export interface User {
   last_name: string;
   is_superuser: boolean;
   is_staff: boolean;
+  date_joined?: string;
+  last_login?: string;
 }
 
 export interface AuthTokens {
@@ -31,11 +33,31 @@ export interface LoginResponse {
   tokens?: AuthTokens;
 }
 
+// Layout types
+export type LayoutId = 'basic' | 'glassmorphism' | 'aurora' | 'neumorphism' | 'minimal' | string;
+export type ThemeMode = 'dark' | 'light' | 'system';
+
+export interface LayoutConfig {
+  current: LayoutId;
+  allow_switch: boolean;
+  options: LayoutId[];
+}
+
+export interface ThemeConfig {
+  mode: ThemeMode;
+  primary_color: string | null;
+  accent_color: string | null;
+}
+
 // Schema types
 export interface SiteInfo {
   name: string;
   version: string;
   api_base: string;
+  /** Layout configuration from backend */
+  layout?: LayoutConfig;
+  /** Theme configuration from backend */
+  theme?: ThemeConfig;
   /** Global custom CSS URLs (from DJNEXT_ADMIN.CUSTOM_CSS). */
   custom_css?: string[];
   /** Global custom JS URLs (from DJNEXT_ADMIN.CUSTOM_JS). */

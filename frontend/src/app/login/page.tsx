@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -10,8 +11,8 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isLoading } = useAuth();
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const [identifier, setIdentifier] = useState('admin@test.com');
+  const [password, setPassword] = useState('TestPass123!');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -96,6 +97,11 @@ export default function LoginPage() {
             >
               Sign in
             </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              <Link href="/forgot-password" className="text-primary hover:underline">
+                Forgot password?
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>

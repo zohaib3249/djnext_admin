@@ -3,6 +3,13 @@ Schema endpoints - return admin configuration for frontend.
 """
 
 from rest_framework.views import APIView
+
+
+def _title_name(s):
+    """Capitalize model/verbose name for display (e.g. 'user address' -> 'User Address')."""
+    if s is None:
+        return ''
+    return str(s).replace('_', ' ').title()
 from rest_framework.response import Response
 
 from ..core.registry import (
@@ -54,6 +61,13 @@ class GlobalSchemaView(APIView):
             'version': djnext_settings.SITE_VERSION,
             'api_base': api_base,
         }
+
+        # Layout configuration (uses validated helper)
+        info['layout'] = djnext_settings.get_layout_config()
+
+        # Theme configuration (uses validated helper)
+        info['theme'] = djnext_settings.get_theme_config()
+
         def _absolute(u):
             if u and str(u).startswith('/'):
                 return request.build_absolute_uri(u)
@@ -130,8 +144,8 @@ class GlobalSchemaView(APIView):
         out = {
             'name': opts.object_name,
             'model_name': model_name,
-            'verbose_name': str(opts.verbose_name),
-            'verbose_name_plural': str(opts.verbose_name_plural),
+            'verbose_name': _title_name(opts.verbose_name),
+            'verbose_name_plural': _title_name(opts.verbose_name_plural),
             'endpoints': {
                 'list': f'{api_base}{app_label}/{model_name}/',
                 'create': f'{api_base}{app_label}/{model_name}/',
@@ -166,7 +180,7 @@ class GlobalSchemaView(APIView):
 
                 model_name = model._meta.model_name
                 item = {
-                    'label': str(model._meta.verbose_name_plural),
+                    'label': _title_name(model._meta.verbose_name_plural),
                     'model_name': model_name,
                     'url': f'{api_base}{app_label}/{model_name}/',
                 }

@@ -3,7 +3,8 @@
 import { createContext, useContext, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGlobalSchema } from '@/hooks/useSchema';
-import type { GlobalSchema, AppSchema, ModelSummary } from '@/types';
+import { LayoutProvider } from '@/contexts/LayoutContext';
+import type { GlobalSchema, AppSchema, ModelSummary, LayoutConfig, ThemeConfig } from '@/types';
 
 interface SchemaContextType {
   schema: GlobalSchema | null;
@@ -16,6 +17,8 @@ interface SchemaContextType {
     modelName: string,
     action: 'add' | 'change' | 'delete' | 'view'
   ) => boolean;
+  layoutConfig: LayoutConfig | undefined;
+  themeConfig: ThemeConfig | undefined;
 }
 
 const SchemaContext = createContext<SchemaContextType | null>(null);
@@ -46,6 +49,9 @@ export function SchemaProvider({ children }: { children: ReactNode }) {
     return model?.permissions?.[action] ?? false;
   };
 
+  const layoutConfig = schema?.site?.layout;
+  const themeConfig = schema?.site?.theme;
+
   return (
     <SchemaContext.Provider
       value={{
@@ -55,9 +61,13 @@ export function SchemaProvider({ children }: { children: ReactNode }) {
         getApp,
         getModel,
         hasPermission,
+        layoutConfig,
+        themeConfig,
       }}
     >
-      {children}
+      <LayoutProvider config={layoutConfig}>
+        {children}
+      </LayoutProvider>
     </SchemaContext.Provider>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchemaContext } from '@/contexts/SchemaContext';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading: authLoading, logout } = useAuth();
   const { schema, isLoading: schemaLoading } = useSchemaContext();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  // Update document title from schema
+  useEffect(() => {
+    if (schema?.site?.name) {
+      document.title = schema.site.name;
+    }
+  }, [schema?.site?.name]);
 
   if (authLoading) {
     return (
@@ -52,6 +59,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         isOpen={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
         navigation={schema.navigation ?? []}
+        siteName={schema.site?.name ?? 'Admin'}
       />
       <div
         className={cn(

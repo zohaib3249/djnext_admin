@@ -11,9 +11,10 @@ interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
   navigation: NavGroup[];
+  siteName?: string;
 }
 
-export function Sidebar({ isOpen, onToggle, navigation }: SidebarProps) {
+export function Sidebar({ isOpen, onToggle, navigation, siteName = 'Admin' }: SidebarProps) {
   const pathname = usePathname();
 
   return (
@@ -25,8 +26,8 @@ export function Sidebar({ isOpen, onToggle, navigation }: SidebarProps) {
     >
       <div className="flex h-14 items-center justify-between border-b border-border px-3">
         {isOpen ? (
-          <span className="text-lg font-semibold text-foreground">
-            DJNext Admin
+          <span className="text-lg font-semibold text-foreground truncate">
+            {siteName}
           </span>
         ) : (
           <LayoutDashboard className="h-8 w-8 text-primary" aria-hidden />

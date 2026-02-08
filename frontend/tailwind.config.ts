@@ -7,6 +7,15 @@ const config: Config = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
+  // Ensure layout classes are never purged
+  safelist: [
+    'layout-basic',
+    'layout-glassmorphism',
+    'layout-aurora',
+    'layout-neumorphism',
+    'layout-minimal',
+    'dark',
+  ],
   theme: {
     extend: {
       colors: {
@@ -45,6 +54,12 @@ const config: Config = {
           DEFAULT: 'var(--skeleton)',
           shine: 'var(--skeleton-shine)',
         },
+      },
+      borderRadius: {
+        DEFAULT: 'var(--radius)',
+        lg: 'var(--radius-lg)',
+        md: 'calc(var(--radius) - 2px)',
+        sm: 'calc(var(--radius) - 4px)',
       },
       animation: {
         'skeleton-pulse': 'skeleton-pulse 2s ease-in-out infinite',

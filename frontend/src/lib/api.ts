@@ -128,6 +128,34 @@ class ApiClient {
     return this.request<User>('/auth/user/');
   }
 
+  async updateProfile(data: { first_name?: string; last_name?: string; email?: string }): Promise<User> {
+    return this.request<User>('/auth/user/', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async changePassword(current_password: string, new_password: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>('/auth/password-change/', {
+      method: 'POST',
+      body: JSON.stringify({ current_password, new_password }),
+    });
+  }
+
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>('/auth/password-reset/', {
+      method: 'POST',
+      body: JSON.stringify({ email: email.trim() }),
+    });
+  }
+
+  async confirmPasswordReset(uid: string, token: string, new_password: string): Promise<{ message: string }> {
+    return this.request<{ message: string }>('/auth/password-reset/confirm/', {
+      method: 'POST',
+      body: JSON.stringify({ uid, token, new_password }),
+    });
+  }
+
   async refreshToken(): Promise<boolean> {
     const refreshToken = this.getRefreshToken();
     if (!refreshToken) return false;
