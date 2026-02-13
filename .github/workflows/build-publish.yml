@@ -241,11 +241,18 @@ jobs:
         working-directory: ${{ steps.pkg.outputs.dir }}
         run: python -m build
 
+      - name: Prepare dist for upload (always at workspace dist/)
+        run: |
+          PKG="${{ steps.pkg.outputs.dir }}"
+          if [ "$PKG" != "." ] && [ -d "$PKG/dist" ]; then
+            cp -r "$PKG/dist" dist
+          fi
+
       - name: Upload Python artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: ${{ steps.pkg.outputs.dir }}/dist/
+          path: dist/
           retention-days: 14
 
   publish-pypi:
