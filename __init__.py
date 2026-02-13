@@ -7,7 +7,7 @@ and exposes REST APIs automatically.
 No separate registration needed - your existing admin.py works!
 """
 
-__version__ = '0.0.2'
+__version__ = '1.0.0'
 
 # Convenience imports
 from .core.registry import get_registry, get_registered_models, get_model_admin
