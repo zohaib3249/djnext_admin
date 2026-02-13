@@ -265,6 +265,17 @@ jobs:
         with:
           name: dist
 
+      - name: Ensure dist/ for PyPI action
+        run: |
+          if [ ! -d dist ]; then
+            mkdir -p dist
+            for f in *.whl *.tar.gz; do
+              [ -e "$f" ] && mv "$f" dist/
+            done
+          fi
+          echo "Contents of dist/:"
+          ls -la dist/
+
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
