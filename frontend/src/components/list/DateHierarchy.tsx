@@ -49,8 +49,7 @@ export function DateHierarchy({
         });
         setDates(result.dates);
         setLevel(result.level);
-      } catch (error) {
-        console.error('Failed to fetch date hierarchy:', error);
+      } catch {
         setDates([]);
       } finally {
         setLoading(false);

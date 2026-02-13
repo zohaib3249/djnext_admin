@@ -14,7 +14,6 @@ const outDir = path.join(__dirname, '..', 'out');
 const indexPath = path.join(outDir, 'index.html');
 
 if (!fs.existsSync(indexPath)) {
-  console.warn('scripts/post-build-manifest.js: out/index.html not found. Run "npm run build" first.');
   process.exit(0);
 }
 
@@ -49,4 +48,3 @@ const manifest = {
 
 const manifestPath = path.join(outDir, 'build-manifest.json');
 fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2), 'utf8');
-console.log('Wrote', manifestPath);
