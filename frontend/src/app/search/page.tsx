@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,11 +33,11 @@ function sortRecords(records: GlobalSearchRecord[], q: string): GlobalSearchReco
   });
 }
 
-export default function SearchPage() {
+function SearchContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading } = useAuth();
-  const { schema } = useSchemaContext();
+  const { schema, basePath } = useSchemaContext();
 
   const q = searchParams.get('q') ?? '';
   const trimmed = q.trim();
@@ -79,7 +80,7 @@ export default function SearchPage() {
   const totalCount = sortedRecords.length + modelCount;
 
   if (!isLoading && !isAuthenticated) {
-    router.replace('/login');
+    router.replace(`${basePath}/login`);
     return null;
   }
 
@@ -170,7 +171,7 @@ export default function SearchPage() {
                   {items.map((item) => (
                     <Link
                       key={`${group.app_label}-${item.model_name}`}
-                      href={`/${group.app_label}/${item.model_name}`}
+                      href={`${basePath}/${group.app_label}/${item.model_name}`}
                       className="block"
                     >
                       <Card className="transition-colors hover:bg-card-hover hover:border-border-hover">
@@ -196,5 +197,20 @@ export default function SearchPage() {
         )}
       </div>
     </AdminLayout>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <AdminLayout>
+        <div className="space-y-6">
+          <h1 className="text-2xl font-semibold text-foreground">Search</h1>
+          <p className="text-muted-foreground">Loading…</p>
+        </div>
+      </AdminLayout>
+    }>
+      <SearchContent />
+    </Suspense>
   );
 }

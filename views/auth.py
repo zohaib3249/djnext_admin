@@ -133,7 +133,8 @@ class AuthViewSet(viewsets.ViewSet):
         """
         POST /api/{path}/auth/refresh/
 
-        Refresh JWT token.
+        Refresh JWT token. When SIMPLE_JWT ROTATE_REFRESH_TOKENS is True,
+        returns a new refresh token and blacklists the old one (if BLACKLIST_AFTER_ROTATION).
         """
         refresh_token = request.data.get('refresh')
 
@@ -145,14 +146,34 @@ class AuthViewSet(viewsets.ViewSet):
 
         try:
             from rest_framework_simplejwt.tokens import RefreshToken
-            refresh = RefreshToken(refresh_token)
-            return Response({
-                'access': str(refresh.access_token),
-            })
+            old_refresh = RefreshToken(refresh_token)
+            rotate = getattr(django_settings, 'SIMPLE_JWT', {}) and django_settings.SIMPLE_JWT.get('ROTATE_REFRESH_TOKENS', False)
+            blacklist_after = getattr(django_settings, 'SIMPLE_JWT', {}) and django_settings.SIMPLE_JWT.get('BLACKLIST_AFTER_ROTATION', False)
+
+            if rotate:
+                user_id = old_refresh.get('user_id')
+                if not user_id:
+                    return Response({'error': 'Invalid refresh token.'}, status=status.HTTP_401_UNAUTHORIZED)
+                user = User.objects.get(pk=user_id)
+                new_refresh = RefreshToken.for_user(user)
+                payload = {'access': str(new_refresh.access_token), 'refresh': str(new_refresh)}
+                if blacklist_after:
+                    try:
+                        old_refresh.blacklist()
+                    except Exception:
+                        pass
+                return Response(payload)
+            payload = {'access': str(old_refresh.access_token)}
+            return Response(payload)
         except ImportError:
             return Response(
                 {'error': 'JWT authentication not configured.'},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'Invalid refresh token.'},
+                status=status.HTTP_401_UNAUTHORIZED
             )
         except Exception:
             return Response(

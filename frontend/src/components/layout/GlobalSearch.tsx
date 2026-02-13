@@ -32,7 +32,7 @@ function sortRecords(records: GlobalSearchRecord[], q: string): GlobalSearchReco
 
 export function GlobalSearch() {
   const router = useRouter();
-  const { schema } = useSchemaContext();
+  const { schema, basePath } = useSchemaContext();
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -97,7 +97,7 @@ export function GlobalSearch() {
 
   const goToSearchPage = () => {
     setOpen(false);
-    if (trimmed) router.push(`/search?q=${encodeURIComponent(trimmed)}`);
+    if (trimmed) router.push(`${basePath}/search?q=${encodeURIComponent(trimmed)}`);
     inputRef.current?.blur();
   };
 
@@ -159,7 +159,7 @@ export function GlobalSearch() {
                   {sortedRecords.map((rec) => (
                     <Link
                       key={`${rec.app_label}-${rec.model_name}-${rec.id}`}
-                      href={`/${rec.app_label}/${rec.model_name}/${rec.id}`}
+                      href={`${basePath}/${rec.app_label}/${rec.model_name}/${rec.id}`}
                       onClick={() => setOpen(false)}
                       className="flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-card-hover transition-colors cursor-pointer border-b border-border/50 last:border-b-0"
                       role="option"
@@ -187,7 +187,7 @@ export function GlobalSearch() {
                   {items.map((item) => (
                     <Link
                       key={`${group.app_label}-${item.model_name}`}
-                      href={`/${group.app_label}/${item.model_name}`}
+                      href={`${basePath}/${group.app_label}/${item.model_name}`}
                       onClick={() => setOpen(false)}
                       className="flex items-center gap-3 px-3 py-2 text-sm text-foreground hover:bg-card-hover transition-colors cursor-pointer"
                       role="option"

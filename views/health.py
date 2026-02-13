@@ -12,7 +12,7 @@ from django.views import View
 
 class HealthView(View):
     """
-    GET /health/ or /api/djnext/health/
+    GET <mount>/api/health/ (e.g. /admin/api/health/)
 
     Returns:
         {"status": "ok", "timestamp": "2025-02-07T12:00:00Z"}

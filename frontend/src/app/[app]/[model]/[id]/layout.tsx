@@ -1,9 +1,6 @@
-/**
- * Layout for [app]/[model]/[id]. Exports generateStaticParams so static export
- * can pre-render at least one detail path.
- */
+/** Required for output: 'export'. Same placeholder as page so build succeeds; Django serves SPA for all paths. */
 export function generateStaticParams() {
-  return [{ app: 'users', model: 'user', id: '0' }];
+  return [{ app: '_', model: '_', id: '_' }];
 }
 
 export default function ModelIdLayout({

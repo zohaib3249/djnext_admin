@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/Button';
+import { api } from '@/lib/api';
 import type { ObjectToolSchema } from '@/types';
 import * as LucideIcons from 'lucide-react';
 
@@ -40,40 +41,29 @@ export function ObjectTools({
     setMessage(null);
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_API_URL || '/api/admin';
-      const url = `${apiBase}/${appLabel}/${modelName}/${objectId}/tools/${tool.name}/`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        setMessage({ type: 'error', text: data.error || 'Action failed' });
-      } else {
-        setMessage({ type: 'success', text: data.message || `${tool.label} completed` });
-        // Refresh the detail page data if callback provided
-        if (onRefresh) {
-          onRefresh();
-        }
-      }
+      const path = `/${appLabel}/${modelName}/${objectId}/tools/${tool.name}/`;
+      const data = await api.post<{ message?: string }>(path);
+      const msg = (data && typeof data === 'object' && typeof (data as { message?: string }).message === 'string')
+        ? (data as { message: string }).message
+        : `${tool.label} completed`;
+      setMessage({ type: 'success', text: msg });
+      if (onRefresh) onRefresh();
     } catch (error) {
-      setMessage({ type: 'error', text: 'Network error occurred' });
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Action failed',
+      });
     } finally {
       setLoading(null);
     }
   };
 
-  // Get icon component from Lucide
+  // Get icon component from Lucide (module has non-component exports, so cast via unknown)
   const getIcon = (iconName: string | undefined) => {
     if (!iconName) return null;
-    const IconComponent = (LucideIcons as Record<string, React.ComponentType<{ className?: string }>>)[iconName];
-    return IconComponent ? <IconComponent className="h-4 w-4" /> : null;
+    const IconComponent = (LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>)[iconName];
+    if (typeof IconComponent !== 'function') return null;
+    return <IconComponent className="h-4 w-4" />;
   };
 
   return (

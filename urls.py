@@ -1,97 +1,28 @@
 """
 URL Configuration for DJNext Admin.
 
-Dynamic URL generation for all registered models.
-Include this in your project's urls.py:
+One include gives both UI and API. In your project urls.py use any path you want:
 
-    path('api/admin/', include('djnext_admin.urls'))
+    path('admin/', include('djnext_admin.urls'))   # or path('djnext/', ...), etc.
 
-You can use any path you want - it's NOT hardcoded!
+Then you get (for path('admin/', ...)):
+  - /admin/           → admin UI (SPA)
+  - /admin/api/       → API (schema, auth, models, etc.)
+  - /admin/_next/...  → static JS/CSS
+
+API base URL is derived from the request; no hardcoded paths.
 """
 
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
+from django.urls import path, re_path, include
 
-from .views.schema import GlobalSchemaView, ModelSchemaView
-from .views.auth import AuthViewSet
-from .views.search import GlobalSearchView
-from .views.health import HealthView
-from .views.relation_options import RelationOptionsView
-from .views.factory import ViewSetFactory
-from .core.registry import get_registered_models
-from .settings import djnext_settings
+from .views.template_serve import spa_view, serve_static
 
-
-class DJNextRouter(DefaultRouter):
-    """
-    Custom router for DJNext Admin.
-    Automatically registers all models from Django admin.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self._registered = False
-
-    def get_urls(self):
-        """Override to register models lazily."""
-        if not self._registered:
-            self._register_models()
-            self._registered = True
-        return super().get_urls()
-
-    def _register_models(self):
-        """Register all Django admin models."""
-        for model, model_admin in get_registered_models():
-            app_label = model._meta.app_label
-            model_name = model._meta.model_name
-
-            # Create ViewSet
-            viewset = ViewSetFactory.create(model, model_admin)
-
-            # Register: /{app_label}/{model_name}/
-            self.register(
-                f'{app_label}/{model_name}',
-                viewset,
-                basename=f'{app_label}_{model_name}'
-            )
-
-
-# Create router instance
-router = DJNextRouter()
-
-# App name for namespacing
-app_name = 'djnext_admin'
-
-# URL patterns
 urlpatterns = [
-    # Health / liveness (no auth) – poll every 1 min for monitoring
-    path('health/', HealthView.as_view(), name='health'),
-
-    # Global schema endpoint
-    path('schema/', GlobalSchemaView.as_view(), name='global-schema'),
-
-    # Global search across models (char fields, record-level)
-    path('search/', GlobalSearchView.as_view(), name='global-search'),
-
-    # Generic relation options (for FK/M2M when target model not registered, e.g. auth.Group)
-    path('relation-options/', RelationOptionsView.as_view(), name='relation-options'),
-
-    # Authentication endpoints
-    path('auth/login/', AuthViewSet.as_view({'post': 'login'}), name='auth-login'),
-    path('auth/logout/', AuthViewSet.as_view({'post': 'logout'}), name='auth-logout'),
-    path('auth/user/', AuthViewSet.as_view({'get': 'user', 'patch': 'profile_update'}), name='auth-user'),
-    path('auth/refresh/', AuthViewSet.as_view({'post': 'refresh'}), name='auth-refresh'),
-    path('auth/password-reset/', AuthViewSet.as_view({'post': 'password_reset_request'}), name='auth-password-reset'),
-    path('auth/password-reset/confirm/', AuthViewSet.as_view({'post': 'password_reset_confirm'}), name='auth-password-reset-confirm'),
-    path('auth/password-change/', AuthViewSet.as_view({'post': 'password_change'}), name='auth-password-change'),
-
-    # Model-specific schema endpoint
-    path(
-        '<str:app_label>/<str:model_name>/schema/',
-        ModelSchemaView.as_view(),
-        name='model-schema'
-    ),
-
-    # Model endpoints (from router)
-    path('', include(router.urls)),
+    # API under same mount so user adds only one include
+    path('api/', include('djnext_admin.api_urls')),
+    # Static JS/CSS
+    path('_next/<path:path>', serve_static, kwargs={'under_next': True}),
+    path('djnext-custom.css', serve_static, kwargs={'path': 'djnext-custom.css'}),
+    # SPA (catch-all)
+    re_path(r'^.*$', spa_view),
 ]

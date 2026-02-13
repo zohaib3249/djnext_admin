@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchemaContext } from '@/contexts/SchemaContext';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -11,6 +12,8 @@ import { api } from '@/lib/api';
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { basePath } = useSchemaContext();
+
   const { user, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
   const [first_name, setFirst_name] = useState('');
   const [last_name, setLast_name] = useState('');
@@ -28,9 +31,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.replace('/login');
+      router.replace(`${basePath}/login`);
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, router, basePath]);
 
   useEffect(() => {
     if (user) {

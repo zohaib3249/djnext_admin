@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useModelSchema } from '@/hooks/useSchema';
 import { useList } from '@/hooks/useList';
+import { useSchemaContext } from '@/contexts/SchemaContext';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { DataTable } from '@/components/list/DataTable';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -23,6 +24,7 @@ export function InlineTable({
   parentId,
 }: InlineTableProps) {
   const [inlinePage, setInlinePage] = useState(1);
+  const { basePath } = useSchemaContext();
   const { data: schema, isLoading } = useModelSchema(
     inline.app_label,
     inline.model_name
@@ -61,7 +63,7 @@ export function InlineTable({
     );
   }
 
-  const listPath = `/${inline.app_label}/${inline.model_name}`;
+  const listPath = `${basePath}/${inline.app_label}/${inline.model_name}`;
   const createUrl = inline.fk_name
     ? `${listPath}/create?${inline.fk_name}=${parentId}`
     : `${listPath}/create`;

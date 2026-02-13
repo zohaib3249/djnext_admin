@@ -1,10 +1,6 @@
-/**
- * Layout for [app]/[model]. Exports generateStaticParams so static export
- * can pre-render at least one list path. Other paths work via client-side routing
- * when Django serves the same HTML (SPA-style).
- */
+/** Required for output: 'export'. Same placeholder as page so build succeeds; Django serves SPA for all paths. */
 export function generateStaticParams() {
-  return [{ app: 'users', model: 'user' }];
+  return [{ app: '_', model: '_' }];
 }
 
 export default function ModelLayout({

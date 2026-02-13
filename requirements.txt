@@ -1,5 +1,6 @@
 # Install deps for djnext-admin (matches setup.py install_requires).
 # Install package: pip install -e .  or  pip install -r requirements.txt && pip install -e .
-Django>=4.0
-djangorestframework>=3.14
-djangorestframework-simplejwt>=5.3
+# To refresh from your .venv: ./scripts/sync-requirements-from-venv.sh (uses pip show).
+Django>=5.2
+djangorestframework>=3.16
+djangorestframework-simplejwt>=5.5

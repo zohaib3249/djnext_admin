@@ -1,8 +1,8 @@
-/**
- * Layout for [app] segment. Exports generateStaticParams so static export
- * (output: 'export') can pre-render at least one path. All real routes are
- * client-rendered; this only satisfies the build.
- */
+/** Required for output: 'export'. Must match params used by child [model] and [model]/[id]. */
+export function generateStaticParams() {
+  return [{ app: '_' }];
+}
+
 export default function AppLayout({
   children,
 }: {

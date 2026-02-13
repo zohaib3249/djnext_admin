@@ -32,6 +32,11 @@ DEFAULTS = {
     'REQUIRE_AUTHENTICATION': True,
     'REQUIRE_STAFF': True,
 
+    # JWT token lifetimes (used only if project wires them to SIMPLE_JWT; see docs).
+    # Defaults: None = use Django SIMPLE_JWT defaults (e.g. 5 min access, 1 day refresh).
+    'ACCESS_TOKEN_LIFETIME': None,
+    'REFRESH_TOKEN_LIFETIME': None,
+
     # Permissions
     'USE_DJANGO_PERMISSIONS': True,
     'SUPERUSER_FULL_ACCESS': True,
@@ -75,11 +80,11 @@ DEFAULTS = {
     'FRONTEND_BASE_PATH': '',
 
     # API base URL for the frontend (so it can call the backend without env vars).
-    # Exposed in schema; frontend uses these when available, else falls back to NEXT_PUBLIC_* or defaults.
+    # Exposed in schema; frontend uses these when available, else derived from request.
     # API_ORIGIN: origin only (e.g. 'http://localhost:8000'). Empty means use request origin.
     'API_ORIGIN': '',
-    # API_PATH: path prefix (e.g. '/api/djnext').
-    'API_PATH': '/api/djnext',
+    # API_PATH: path prefix. Empty means derive from request (e.g. /admin/api/ when mounted at /admin/).
+    'API_PATH': '',
 }
 
 

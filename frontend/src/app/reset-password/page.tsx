@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchemaContext } from '@/contexts/SchemaContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
@@ -13,6 +14,7 @@ import { api } from '@/lib/api';
 function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { basePath } = useSchemaContext();
   const { isAuthenticated, isLoading } = useAuth();
   const uid = searchParams.get('uid') ?? '';
   const token = searchParams.get('token') ?? '';
@@ -26,9 +28,9 @@ function ResetPasswordForm() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace('/dashboard');
+      router.replace(`${basePath}/dashboard`);
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, router, basePath]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,12 +69,12 @@ function ResetPasswordForm() {
             </p>
           </CardHeader>
           <CardContent>
-            <Link href="/forgot-password">
+            <Link href={`${basePath}/forgot-password`}>
               <Button variant="secondary" className="w-full">
                 Request new link
               </Button>
             </Link>
-            <Link href="/login" className="block mt-3 text-center text-sm text-primary hover:underline">
+            <Link href={`${basePath}/login`} className="block mt-3 text-center text-sm text-primary hover:underline">
               Back to sign in
             </Link>
           </CardContent>
@@ -94,7 +96,7 @@ function ResetPasswordForm() {
             </p>
           </CardHeader>
           <CardContent>
-            <Link href="/login">
+            <Link href={`${basePath}/login`}>
               <Button className="w-full">
                 Sign in
               </Button>
@@ -110,7 +112,7 @@ function ResetPasswordForm() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <Link
-            href="/login"
+            href={`${basePath}/login`}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"
           >
             <ArrowLeft className="h-4 w-4" />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSchemaContext } from '@/contexts/SchemaContext';
 import { cn } from '@/lib/utils';
@@ -13,6 +14,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isLoading: authLoading, logout } = useAuth();
   const { schema, isLoading: schemaLoading } = useSchemaContext();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const pathname = usePathname();
+  const [showSkeleton, setShowSkeleton] = useState(false);
+  const [displayPath, setDisplayPath] = useState(pathname);
 
   // Update document title from schema
   useEffect(() => {
@@ -20,6 +24,20 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       document.title = schema.site.name;
     }
   }, [schema?.site?.name]);
+
+  // On route change: show skeleton briefly then content (no slide animation)
+  useEffect(() => {
+    if (pathname !== displayPath) {
+      setShowSkeleton(true);
+      setDisplayPath(pathname);
+    }
+  }, [pathname, displayPath]);
+
+  useEffect(() => {
+    if (!showSkeleton) return;
+    const t = setTimeout(() => setShowSkeleton(false), 80);
+    return () => clearTimeout(t);
+  }, [showSkeleton]);
 
   if (authLoading) {
     return (
@@ -63,7 +81,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       />
       <div
         className={cn(
-          'transition-all duration-300',
+          'transition-[margin-left] duration-300',
           sidebarOpen ? 'ml-64' : 'ml-16'
         )}
       >
@@ -73,7 +91,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           onMenuClick={() => setSidebarOpen(!sidebarOpen)}
           onLogout={logout}
         />
-        <main className="p-6">{children}</main>
+        <main className="p-6">
+          {showSkeleton ? (
+            <div className="space-y-4" key="skeleton">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-32 w-full" />
+            </div>
+          ) : (
+            <div key={pathname ?? 'main'}>{children}</div>
+          )}
+        </main>
       </div>
     </div>
   );

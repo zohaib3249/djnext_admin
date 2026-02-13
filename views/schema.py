@@ -2,7 +2,9 @@
 Schema endpoints - return admin configuration for frontend.
 """
 
+from django.http import JsonResponse
 from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
 
 
 def _title_name(s):
@@ -23,6 +25,61 @@ from ..permissions import DJNextBasePermission
 from ..settings import djnext_settings
 
 
+def _get_api_base_from_request(request, path_suffix='schema'):
+    """Detect API base path from request URL (e.g. /admin/api/schema/ -> /admin/api/)."""
+    path = (request.path or '').rstrip('/')
+    if path.endswith(path_suffix):
+        base = path[: -len(path_suffix)].rstrip('/')
+    else:
+        base = path
+    return (base or '') + '/'
+
+
+def build_site_info(request, api_base):
+    """Build site-level info dict. Used by GlobalSchemaView and SiteInfoView."""
+    api_origin = (getattr(djnext_settings, 'API_ORIGIN', None) or '').strip()
+    if not api_origin:
+        api_origin = request.build_absolute_uri('/').rstrip('/')
+    api_path = (getattr(djnext_settings, 'API_PATH', None) or '').strip() or api_base
+    info = {
+        'name': djnext_settings.SITE_NAME,
+        'version': djnext_settings.SITE_VERSION,
+        'api_base': api_base,
+        'api_origin': api_origin,
+        'api_path': api_path,
+        'frontend_base_path': (getattr(djnext_settings, 'FRONTEND_BASE_PATH', None) or '') or '',
+    }
+    info['layout'] = djnext_settings.get_layout_config()
+    info['theme'] = djnext_settings.get_theme_config()
+
+    def _absolute(u):
+        if u and str(u).startswith('/'):
+            return request.build_absolute_uri(u)
+        return u
+
+    if getattr(djnext_settings, 'CUSTOM_CSS', None):
+        info['custom_css'] = [_absolute(u) for u in djnext_settings.CUSTOM_CSS]
+    if getattr(djnext_settings, 'CUSTOM_JS', None):
+        info['custom_js'] = [_absolute(u) for u in djnext_settings.CUSTOM_JS]
+    return info
+
+
+class SiteInfoView(APIView):
+    """
+    Minimal site details for login/branding. No authentication required.
+    Always returns JSON (no DRF content negotiation) so browsers and fetch() get the same response.
+
+    GET /api/{path}/site/
+    """
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        api_base = _get_api_base_from_request(request, 'site')
+        data = build_site_info(request, api_base)
+        return JsonResponse(data)
+
+
 class GlobalSchemaView(APIView):
     """
     Returns complete admin schema for all registered models.
@@ -34,56 +91,13 @@ class GlobalSchemaView(APIView):
     permission_classes = [DJNextBasePermission]
 
     def get(self, request):
-        # Detect API base path from request
-        api_base = self._get_api_base(request)
-
+        api_base = _get_api_base_from_request(request, 'schema')
         return Response({
-            'site': self._get_site_info(request, api_base),
+            'site': build_site_info(request, api_base),
             'user': self._get_user_info(request),
             'apps': self._get_apps_schema(request, api_base),
             'navigation': self._get_navigation(request, api_base),
         })
-
-    def _get_api_base(self, request):
-        """Detect API base path from request URL."""
-        path = request.path
-        # Remove 'schema/' from the end to get base
-        if path.endswith('schema/'):
-            return path[:-7]  # Remove 'schema/'
-        elif path.endswith('schema'):
-            return path[:-6]  # Remove 'schema'
-        return path
-
-    def _get_site_info(self, request, api_base):
-        """Site-level information. Relative URLs in custom_css/js are made absolute."""
-        api_origin = (getattr(djnext_settings, 'API_ORIGIN', None) or '').strip()
-        if not api_origin:
-            api_origin = request.build_absolute_uri('/').rstrip('/')
-        api_path = (getattr(djnext_settings, 'API_PATH', None) or '').strip() or api_base
-        info = {
-            'name': djnext_settings.SITE_NAME,
-            'version': djnext_settings.SITE_VERSION,
-            'api_base': api_base,
-            'api_origin': api_origin,
-            'api_path': api_path,
-            'frontend_base_path': (getattr(djnext_settings, 'FRONTEND_BASE_PATH', None) or '') or '',
-        }
-
-        # Layout configuration (uses validated helper)
-        info['layout'] = djnext_settings.get_layout_config()
-
-        # Theme configuration (uses validated helper)
-        info['theme'] = djnext_settings.get_theme_config()
-
-        def _absolute(u):
-            if u and str(u).startswith('/'):
-                return request.build_absolute_uri(u)
-            return u
-        if getattr(djnext_settings, 'CUSTOM_CSS', None):
-            info['custom_css'] = [_absolute(u) for u in djnext_settings.CUSTOM_CSS]
-        if getattr(djnext_settings, 'CUSTOM_JS', None):
-            info['custom_js'] = [_absolute(u) for u in djnext_settings.CUSTOM_JS]
-        return info
 
     def _get_user_info(self, request):
         """Current user information."""

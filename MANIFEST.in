@@ -1,3 +1,8 @@
+# Include README for sdist (setup.py long_description)
+include README.md
+# After post-build-to-static.py: one Jinja template + assets (Django {% static %} only)
+recursive-include templates *
+recursive-include static *
 # Exclude dev/cache and IDE
 global-exclude __pycache__
 global-exclude *.py[cod]

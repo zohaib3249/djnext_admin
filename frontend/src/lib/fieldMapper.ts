@@ -13,7 +13,7 @@ import { RelationField } from '@/components/form/fields/RelationField';
 import { ManyToManyField } from '@/components/form/fields/ManyToManyField';
 import { JsonField } from '@/components/form/fields/JsonField';
 
-type FieldComponentProps = {
+export type FieldComponentProps = {
   field: FieldSchema;
   value?: unknown;
   onChange?: (value: unknown) => void;
@@ -21,7 +21,8 @@ type FieldComponentProps = {
   error?: { message?: string };
 };
 
-const widgetToComponent: Record<string, ComponentType<FieldComponentProps>> = {
+// Field components accept compatible props (field, value, onChange, etc.); exact prop types vary per widget.
+const widgetToComponent = {
   text: TextField,
   textarea: TextareaField,
   number: NumberField,
@@ -37,13 +38,13 @@ const widgetToComponent: Record<string, ComponentType<FieldComponentProps>> = {
   hidden: TextField,
   password: TextField,
   json: JsonField,
-};
+} as Record<string, ComponentType<FieldComponentProps>>;
 
 export function getFieldComponent(field: FieldSchema): ComponentType<FieldComponentProps> {
-  if (field.relation?.type === 'many_to_many') return ManyToManyField;
-  if (field.relation) return RelationField;
-  if (field.choices?.length) return SelectField;
-  if (field.widget === 'json' || field.type === 'object') return JsonField;
+  if (field.relation?.type === 'many_to_many') return ManyToManyField as ComponentType<FieldComponentProps>;
+  if (field.relation) return RelationField as ComponentType<FieldComponentProps>;
+  if (field.choices?.length) return SelectField as ComponentType<FieldComponentProps>;
+  if (field.widget === 'json' || field.type === 'object') return JsonField as ComponentType<FieldComponentProps>;
   return widgetToComponent[field.widget] ?? TextField;
 }
 

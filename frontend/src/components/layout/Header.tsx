@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Menu, User, LogOut, Settings, Sun, Moon, Monitor, Palette } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLayout } from '@/contexts/LayoutContext';
+import { useSchemaContext } from '@/contexts/SchemaContext';
 import { GlobalSearch } from './GlobalSearch';
 import type { User as UserType, LayoutId } from '@/types';
 
@@ -29,6 +30,7 @@ export function Header({ user, siteName, onMenuClick, onLogout }: HeaderProps) {
   const [layoutOpen, setLayoutOpen] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
   const { layout, setLayout, allowSwitch, options } = useLayout();
+  const { basePath } = useSchemaContext();
 
   return (
     <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-4 border-b border-border bg-background px-4">
@@ -180,7 +182,7 @@ export function Header({ user, siteName, onMenuClick, onLogout }: HeaderProps) {
                 </p>
               </div>
               <Link
-                href="/settings"
+                href={`${basePath}/settings`}
                 className="flex w-full items-center gap-2 px-3 py-2 text-sm text-foreground transition-colors hover:bg-card-hover"
                 onClick={() => setOpen(false)}
               >

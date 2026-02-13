@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { LayoutDashboard, FolderTree } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useSchemaContext } from '@/contexts/SchemaContext';
 import { ModelAvatar } from '@/components/ui/ModelAvatar';
 import type { NavGroup } from '@/types';
 
@@ -16,6 +17,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onToggle, navigation, siteName = 'Admin' }: SidebarProps) {
   const pathname = usePathname();
+  const { basePath } = useSchemaContext();
 
   return (
     <aside
@@ -36,10 +38,10 @@ export function Sidebar({ isOpen, onToggle, navigation, siteName = 'Admin' }: Si
 
       <nav className="flex-1 overflow-y-auto p-3 space-y-1">
         <Link
-          href="/dashboard"
+          href={`${basePath}/dashboard`}
           className={cn(
             'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer',
-            pathname === '/dashboard'
+            pathname === `${basePath}/dashboard` || pathname === `${basePath}/dashboard/`
               ? 'bg-primary/10 text-primary'
               : 'text-muted-foreground hover:bg-card-hover hover:text-foreground'
           )}
@@ -54,6 +56,7 @@ export function Sidebar({ isOpen, onToggle, navigation, siteName = 'Admin' }: Si
             group={group}
             isOpen={isOpen}
             pathname={pathname}
+            basePath={basePath}
           />
         ))}
       </nav>
@@ -65,13 +68,13 @@ function NavSection({
   group,
   isOpen,
   pathname,
+  basePath,
 }: {
   group: NavGroup;
   isOpen: boolean;
   pathname: string;
+  basePath: string;
 }) {
-  const basePath = `/${group.app_label}`;
-
   return (
     <div className="space-y-1">
       {/* App label: expanded = normal header; collapsed = small full text + line */}
@@ -94,7 +97,7 @@ function NavSection({
         </>
       )}
       {group.items?.map((item) => {
-        const href = `/${group.app_label}/${item.model_name}`;
+        const href = `${basePath}/${group.app_label}/${item.model_name}`;
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
           <Link

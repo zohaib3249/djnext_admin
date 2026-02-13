@@ -34,6 +34,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/Card';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 import { ModelAvatar } from '@/components/ui/ModelAvatar';
 import { Spinner } from '@/components/ui/Spinner';
+import { logBasePath, logLoading } from '@/lib/debug';
 import type { NavGroup, NavItem } from '@/types';
 
 function getGreeting(): string {
@@ -58,15 +59,20 @@ const CHART_COLORS = ['#10b981', '#3b82f6', '#ef4444']; // emerald, blue, red
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
-  const { schema } = useSchemaContext();
+  const { schema, basePath, isLoading: schemaLoading } = useSchemaContext();
   const {
     results: recentLogs,
     count: auditCount,
     isLoading: logsLoading,
   } = useList('djnext_admin', 'auditlog', { page: 1, page_size: 10 });
 
+  logBasePath('DashboardPage', basePath, '');
+  logLoading('DashboardPage', isLoading, `auth isAuthenticated=${isAuthenticated}`);
+  logLoading('DashboardPage schema', schemaLoading, '');
+  logLoading('DashboardPage auditlog', logsLoading, '');
+
   if (!isLoading && !isAuthenticated) {
-    router.replace('/login');
+    router.replace(`${basePath}/login`);
     return null;
   }
 
@@ -255,7 +261,7 @@ export default function DashboardPage() {
               Recent activity
             </h2>
             <Link
-              href="/djnext_admin/auditlog"
+              href={`${basePath}/djnext_admin/auditlog`}
               className="text-sm font-medium text-primary hover:underline"
             >
               View all
@@ -351,7 +357,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-6">
               {navigation.map((group) => (
-                <AppSection key={group.app_label} group={group} />
+                <AppSection key={group.app_label} group={group} basePath={basePath} />
               ))}
             </div>
           </section>
@@ -375,7 +381,7 @@ export default function DashboardPage() {
   );
 }
 
-function AppSection({ group }: { group: NavGroup }) {
+function AppSection({ group, basePath }: { group: NavGroup; basePath: string }) {
   if (!group.items?.length) return null;
 
   return (
@@ -387,7 +393,7 @@ function AppSection({ group }: { group: NavGroup }) {
             key={`${group.app_label}-${item.model_name}`}
             item={item}
             appLabel={group.label}
-            basePath={`/${group.app_label}/${item.model_name}`}
+            basePath={`${basePath}/${group.app_label}/${item.model_name}`}
           />
         ))}
       </div>

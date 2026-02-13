@@ -1,10 +1,12 @@
 'use client';
 
-import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGlobalSchema } from '@/hooks/useSchema';
 import { LayoutProvider } from '@/contexts/LayoutContext';
 import { api } from '@/lib/api';
+import { getBasePathFromPathname } from '@/lib/basePath';
+import { logBasePath, logLoading } from '@/lib/debug';
 import type { GlobalSchema, AppSchema, ModelSummary, LayoutConfig, ThemeConfig } from '@/types';
 
 interface SchemaContextType {
@@ -54,18 +56,36 @@ export function SchemaProvider({ children }: { children: ReactNode }) {
 
   const layoutConfig = schema?.site?.layout;
   const themeConfig = schema?.site?.theme;
-  const basePath =
+  // Prefer Django-injected base path (window.__DJNEXT_BASE_PATH) so sidebar/links work under any mount.
+  // Use schema.site.frontend_base_path only when not running under Django (e.g. dev or custom deploy).
+  const injectedBase = getBasePathFromPathname();
+  const schemaBase =
     (schema?.site?.frontend_base_path !== undefined && schema?.site?.frontend_base_path !== null
-      ? schema.site.frontend_base_path
-      : typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_BASE_PATH) || '';
+      ? String(schema.site.frontend_base_path).trim()
+      : '') || '';
+  const basePath = injectedBase || schemaBase || '';
 
-  // Use API origin/path from schema (settings/default) when available
+  const prev = useRef({ basePath: '', isLoading, authLoading, isAuthenticated: false });
   useEffect(() => {
-    const origin = schema?.site?.api_origin;
-    const path = schema?.site?.api_path ?? schema?.site?.api_base;
-    if (origin && path) {
-      api.setApiBaseFromSchema(origin, path);
+    if (prev.current.basePath !== basePath || prev.current.isLoading !== isLoading || prev.current.authLoading !== authLoading || prev.current.isAuthenticated !== isAuthenticated) {
+      const source = basePath === injectedBase && injectedBase ? 'injected' : schemaBase ? 'schema' : 'none';
+      logBasePath('SchemaContext', basePath, source);
+      logLoading('Schema', isLoading, `authLoading=${authLoading} isAuthenticated=${isAuthenticated}`);
+      prev.current = { basePath, isLoading, authLoading, isAuthenticated };
     }
+  }, [basePath, injectedBase, schemaBase, isLoading, authLoading, isAuthenticated]);
+
+  // Use API origin/path from schema only when it matches our mount (e.g. /admin/api/).
+  // Never apply schema path like /api/ so we don't point to the project's auth instead of djnext_admin's (<mount>/api/auth/).
+  useEffect(() => {
+    const path = schema?.site?.api_path ?? schema?.site?.api_base;
+    if (!path) return;
+    const mount = getBasePathFromPathname();
+    if (mount && !path.startsWith(mount)) return;
+    const origin =
+      (schema?.site?.api_origin && schema.site.api_origin.trim()) ||
+      (typeof window !== 'undefined' ? window.location.origin : '');
+    if (origin) api.setApiBaseFromSchema(origin, path);
   }, [schema?.site?.api_origin, schema?.site?.api_path, schema?.site?.api_base]);
 
   return (

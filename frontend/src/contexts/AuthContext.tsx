@@ -11,6 +11,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { getBasePathFromPathname } from '@/lib/basePath';
 import type { User } from '@/types';
 
 interface AuthContextType {
@@ -31,14 +32,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
 
   const checkAuth = useCallback(async () => {
+    const timeout = setTimeout(() => setIsLoading(false), 8000);
     try {
       const userData = await api.getUser();
       setUser(userData);
     } catch {
-      api.setAccessToken(null);
-      api.setRefreshToken(null);
       setUser(null);
+      // Do not clear tokens here. The api client clears them only when refresh returns 401/403.
+      // So on 401 we try refresh first; only if refresh fails do we clear (in api.refreshToken).
     } finally {
+      clearTimeout(timeout);
       setIsLoading(false);
     }
   }, []);
@@ -59,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await api.login(identifier, password);
     setUser(data.user);
     queryClient.invalidateQueries({ queryKey: ['schema'] });
-    router.push('/dashboard');
+    router.push(`${getBasePathFromPathname()}/dashboard`);
   };
 
   const logout = async () => {
@@ -71,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       api.setAccessToken(null);
       api.setRefreshToken(null);
-      router.push('/login');
+      router.push(`${getBasePathFromPathname()}/login`);
     }
   };
 

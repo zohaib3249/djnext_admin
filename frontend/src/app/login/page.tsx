@@ -1,25 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchemaContext } from '@/contexts/SchemaContext';
+import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
+import type { SiteInfo } from '@/types';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { basePath } = useSchemaContext();
   const { login, isAuthenticated, isLoading } = useAuth();
-  const [identifier, setIdentifier] = useState('admin@test.com');
-  const [password, setPassword] = useState('TestPass123!');
+  const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null);
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    api.getSiteInfo().then(setSiteInfo).catch(() => setSiteInfo(null));
+  }, []);
+
   if (isAuthenticated) {
-    router.replace('/dashboard');
+    router.replace(`${basePath}/dashboard`);
     return null;
   }
+
+  const siteName = siteInfo?.name?.trim() || 'DJNext Admin';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +50,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <h1 className="text-xl font-semibold text-foreground">
-            DJNext Admin
+            {siteName}
           </h1>
           <p className="text-sm text-muted-foreground">
             Sign in with your username or email
@@ -98,7 +109,7 @@ export default function LoginPage() {
               Sign in
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              <Link href="/forgot-password" className="text-primary hover:underline">
+              <Link href={`${basePath}/forgot-password`} className="text-primary hover:underline">
                 Forgot password?
               </Link>
             </p>

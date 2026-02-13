@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSchemaContext } from '@/contexts/SchemaContext';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardContent, CardHeader } from '@/components/ui/Card';
@@ -12,6 +13,7 @@ import { api } from '@/lib/api';
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
+  const { basePath } = useSchemaContext();
   const { isAuthenticated, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -19,7 +21,7 @@ export default function ForgotPasswordPage() {
   const [submitting, setSubmitting] = useState(false);
 
   if (isAuthenticated) {
-    router.replace('/dashboard');
+    router.replace(`${basePath}/dashboard`);
     return null;
   }
 
@@ -43,7 +45,7 @@ export default function ForgotPasswordPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <Link
-            href="/login"
+            href={`${basePath}/login`}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-2"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -62,7 +64,7 @@ export default function ForgotPasswordPage() {
               <p className="text-sm text-foreground">
                 If an account exists with that email, you will receive a password reset link shortly.
               </p>
-              <Link href="/login">
+              <Link href={`${basePath}/login`}>
                 <Button variant="secondary" className="w-full">
                   Back to sign in
                 </Button>
