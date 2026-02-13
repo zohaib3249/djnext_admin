@@ -99,19 +99,41 @@ jobs:
           git push origin HEAD
           git push origin "${{ steps.bump.outputs.tag_name }}"
 
-      - name: Set outputs
+      - name: Set outputs and write version file
         id: outputs
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ steps.bump.outputs.new_version }}" ]]; then
-            echo "version=${{ steps.bump.outputs.new_version }}" >> $GITHUB_OUTPUT
-            echo "tag_name=${{ steps.bump.outputs.tag_name }}" >> $GITHUB_OUTPUT
-          elif [[ "${{ github.event_name }}" == "push" && "${{ github.ref }}" == refs/tags/v* ]]; then
-            echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-            echo "tag_name=${{ github.ref_name }}" >> $GITHUB_OUTPUT
-          else
-            echo "version=${{ steps.current.outputs.version }}" >> $GITHUB_OUTPUT
-            echo "tag_name=" >> $GITHUB_OUTPUT
+          set -e
+          V=""
+          T=""
+          # workflow_dispatch: use bumped version from previous step
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            V="${{ steps.bump.outputs.new_version }}"
+            T="${{ steps.bump.outputs.tag_name }}"
           fi
+          # push to tag v*: use version from tag
+          if [ -z "$V" ] && [ "${{ github.event_name }}" = "push" ]; then
+            REF="${{ github.ref }}"
+            case "$REF" in refs/tags/v*) V="${GITHUB_REF#refs/tags/v}"; T="${{ github.ref_name }}"; esac
+          fi
+          # fallback: current version from __init__.py
+          if [ -z "$V" ]; then
+            V="${{ steps.current.outputs.version }}"
+            T=""
+          fi
+          V=$(echo "$V" | tr -d '\n\r \t')
+          [ -z "$V" ] && V="0.0.1"
+          echo "version=$V" >> $GITHUB_OUTPUT
+          echo "tag_name=$T" >> $GITHUB_OUTPUT
+          printf '%s' "$V" > version.txt
+          echo "Resolved version: $V"
+          test -s version.txt || { echo "ERROR: version.txt is empty"; exit 1; }
+
+      - name: Upload version file
+        uses: actions/upload-artifact@v4
+        with:
+          name: version-file
+          path: version.txt
+          retention-days: 1
 
   build-frontend:
     name: Build frontend
@@ -171,12 +193,32 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Download version file
+        uses: actions/download-artifact@v4
+        with:
+          name: version-file
+          path: .
+
       - name: Set version in __init__.py
-        working-directory: ${{ steps.pkg.outputs.dir }}
+        id: setver
         run: |
-          VERSION="${{ needs.version.outputs.version }}"
-          sed -i.bak "s/^__version__ = .*/__version__ = '$VERSION'/" __init__.py
-          rm -f __init__.py.bak
+          set -e
+          PKG="${{ steps.pkg.outputs.dir }}"
+          # Read version from artifact (downloaded to workspace root)
+          VERSION=$(cat version.txt 2>/dev/null | tr -d '\n\r \t' || true)
+          if [ -z "$VERSION" ]; then
+            VERSION="${{ needs.version.outputs.version }}"
+          fi
+          if [ -z "$VERSION" ]; then
+            VERSION=$(grep -E "^__version__\s*=\s*['\"]" "$PKG/__init__.py" 2>/dev/null | sed -E "s/^__version__\s*=\s*['\"]([^'\"]+)['\"].*/\1/" | tr -d '\n\r \t' || true)
+          fi
+          [ -z "$VERSION" ] && VERSION="0.0.1"
+          VERSION=$(echo "$VERSION" | tr -d '\n\r \t')
+          [ -z "$VERSION" ] && { echo "ERROR: Version is empty"; exit 1; }
+          echo "Resolved version: $VERSION"
+          sed -i.bak "s/^__version__ = .*/__version__ = '$VERSION'/" "$PKG/__init__.py"
+          rm -f "$PKG/__init__.py.bak"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Building version: $VERSION"
 
       - name: Download frontend build
